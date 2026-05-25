@@ -1,17 +1,19 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  swcMinify: true,
   images: {
-    remotePatterns: [
-      { protocol: 'https', hostname: '**.replicate.delivery' },
-      { protocol: 'https', hostname: 'oaidalleapiprodscus.blob.core.windows.net' },
-      { protocol: 'https', hostname: '**.blob.core.windows.net' },
-      { protocol: 'https', hostname: 'replicate.com' },
-      { protocol: 'https', hostname: 'pbxt.replicate.delivery' },
-    ],
+    remotePatterns: [{ protocol: 'https', hostname: '**' }],
   },
-  experimental: {
-    optimizePackageImports: ['recharts', 'lucide-react', '@radix-ui/react-dialog', '@radix-ui/react-tooltip', 'framer-motion'],
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'X-XSS-Protection', value: '1; mode=block' },
+        ],
+      },
+    ]
   },
 }
 export default nextConfig
