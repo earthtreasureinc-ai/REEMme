@@ -1,59 +1,58 @@
-import { NextResponse } from "next/server";
+export async function POST(req) {
+  const { text, voiceId } = await req.json()
+  if (!text) return Response.json({ error: 'text required' }, { status: 400 })
 
-const DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM";
-
-export async function POST(request) {
-  const { text, voiceId } = await request.json();
-
-  if (!text || typeof text !== "string" || text.trim() === "") {
-    return NextResponse.json({ error: "text is required" }, { status: 400 });
+  const elevenKey = process.env.ELEVENLABS_API_KEY || process.env.ELEVEN_LABS
+  if (elevenKey) {
+    try {
+      const vid = voiceId || '21m00Tcm4TlvDq8ikWAM'
+      const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${vid}/stream`, {
+        method: 'POST',
+        headers: { 'xi-api-key': elevenKey, 'Content-Type': 'application/json', Accept: 'audio/mpeg' },
+        body: JSON.stringify({ text: text.slice(0, 5000), model_id: 'eleven_turbo_v2', voice_settings: { stability: 0.5, similarity_boost: 0.75 } }),
+        signal: AbortSignal.timeout(30000),
+      })
+      if (res.ok) {
+        const buffer = await res.arrayBuffer()
+        return new Response(buffer, { headers: { 'Content-Type': 'audio/mpeg', 'Content-Length': String(buffer.byteLength), 'X-TTS-Provider': 'elevenlabs' } })
+      }
+    } catch {}
   }
 
-  const elevenLabsKey = process.env.ELEVENLABS;
-
-  if (!elevenLabsKey) {
-    return NextResponse.json(
-      { error: "ElevenLabs not configured" },
-      { status: 503 }
-    );
+  // OpenAI TTS fallback
+  const openaiKey = process.env.OPENAI_API_KEY || process.env.OPENAI
+  if (openaiKey) {
+    try {
+      const res = await fetch('https://api.openai.com/v1/audio/speech', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'tts-1', input: text.slice(0, 4096), voice: 'nova' }),
+        signal: AbortSignal.timeout(30000),
+      })
+      if (res.ok) {
+        const buffer = await res.arrayBuffer()
+        return new Response(buffer, { headers: { 'Content-Type': 'audio/mpeg', 'Content-Length': String(buffer.byteLength), 'X-TTS-Provider': 'openai' } })
+      }
+    } catch {}
   }
 
-  const voice = voiceId || DEFAULT_VOICE_ID;
+  return Response.json({ error: 'No TTS provider configured (ELEVENLABS_API_KEY or OPENAI_API_KEY)' }, { status: 503 })
+}
 
-  const ttsRes = await fetch(
-    `https://api.elevenlabs.io/v1/text-to-speech/${voice}`,
-    {
-      method: "POST",
-      headers: {
-        "xi-api-key": elevenLabsKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        text,
-        model_id: "eleven_monolingual_v1",
-        voice_settings: {
-          stability: 0.5,
-          similarity_boost: 0.75,
-        },
-      }),
-    }
-  );
-
-  if (!ttsRes.ok) {
-    const errorText = await ttsRes.text().catch(() => "Unknown error");
-    return NextResponse.json(
-      { error: `ElevenLabs request failed: ${ttsRes.status}`, detail: errorText },
-      { status: ttsRes.status }
-    );
+export async function GET() {
+  const elevenKey = process.env.ELEVENLABS_API_KEY || process.env.ELEVEN_LABS
+  if (!elevenKey) return Response.json({ voices: [], provider: 'none' })
+  try {
+    const res = await fetch('https://api.elevenlabs.io/v1/voices', {
+      headers: { 'xi-api-key': elevenKey },
+      signal: AbortSignal.timeout(10000),
+    })
+    const data = await res.json()
+    return Response.json({
+      voices: (data.voices || []).slice(0, 20).map(v => ({ id: v.voice_id, name: v.name, category: v.category })),
+      provider: 'elevenlabs',
+    })
+  } catch (e) {
+    return Response.json({ voices: [], error: e.message })
   }
-
-  const audioBuffer = await ttsRes.arrayBuffer();
-
-  return new Response(audioBuffer, {
-    status: 200,
-    headers: {
-      "Content-Type": "audio/mpeg",
-      "Content-Length": String(audioBuffer.byteLength),
-    },
-  });
 }
