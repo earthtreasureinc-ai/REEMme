@@ -79,3 +79,42 @@ code { font-family: var(--font-mono); }
 .prose table { width: 100%; border-collapse: collapse; margin: 0.8em 0; font-size: 0.9em; }
 .prose th { background: var(--bg4); padding: 8px 12px; border: 1px solid var(--border); text-align: left; font-weight: 500; }
 .prose td { padding: 7px 12px; border: 1px solid var(--border); }
+
+/* ── Prose improvements ─────────────────────────────────────── */
+.prose table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 14px; }
+.prose th { background: var(--bg4); border: 1px solid var(--border2); padding: 6px 12px; text-align: left; font-weight: 600; }
+.prose td { border: 1px solid var(--border); padding: 6px 12px; }
+.prose tr:hover td { background: var(--bg4); }
+.prose blockquote { border-left: 3px solid var(--gold); padding: 4px 0 4px 14px; color: var(--text3); margin: 10px 0; font-style: italic; }
+.prose li { margin: 4px 0; line-height: 1.65; }
+.prose ul { padding-left: 20px; }
+.prose ol { padding-left: 20px; }
+.prose h1, .prose h2, .prose h3, .prose h4 { font-family: var(--font-display); font-weight: 700; margin: 16px 0 8px; letter-spacing: -0.02em; color: var(--text); }
+.prose h1 { font-size: 1.5em; }
+.prose h2 { font-size: 1.25em; }
+.prose h3 { font-size: 1.1em; }
+.prose p { margin: 8px 0; }
+.prose pre { margin: 10px 0; border-radius: 8px; overflow: hidden; }
+.prose img { max-width: 100%; border-radius: 8px; margin: 8px 0; }
+.prose hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+.prose input[type="checkbox"] { accent-color: var(--gold); margin-right: 6px; }
+
+/* ── Syntax highlighter overrides ───────────────────────────── */
+.prose pre > div { border-radius: 8px !important; font-size: 13px !important; }
+
+/* ── Scrollbar styling ──────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border2); }
+
+/* ── Animations ─────────────────────────────────────────────── */
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+.skeleton { background: linear-gradient(90deg, var(--bg3) 25%, var(--bg4) 50%, var(--bg3) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 4px; }
+
+/* ── Chat search overlay backdrop blur ──────────────────────── */
+.search-overlay { backdrop-filter: blur(4px); }
+
+/* ── Delete button hover on chat items ──────────────────────── */
+.chat-item:hover .delete-btn,
+div:hover > .delete-btn { opacity: 1 !important; }

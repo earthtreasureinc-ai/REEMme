@@ -5,6 +5,10 @@ import remarkGfm from 'remark-gfm'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import VoiceInput from './components/VoiceInput'
+import localforage from 'localforage'
+import Fuse from 'fuse.js'
+import { Toaster, toast } from 'sonner'
+import { BarChart, Bar, ResponsiveContainer, Tooltip } from 'recharts'
 
 const PRESET_PROMPTS = [
   { label: 'Default', value: 'You are REEMme, a powerful AI assistant with access to multiple AI models, GitHub repositories, and various APIs. Be concise, helpful, and technical when needed.' },
@@ -57,6 +61,7 @@ export default function REEMme() {
   const [selectedModel, setSelectedModel] = useState(null)
   const [repos, setRepos] = useState([])
   const [reposLoading, setReposLoading] = useState(false)
+  const [repoSearch, setRepoSearch] = useState('')
   const [modelsLoading, setModelsLoading] = useState(true)
   const [error, setError] = useState('')
   const [sidebarTab, setSidebarTab] = useState('chats')
@@ -116,25 +121,30 @@ export default function REEMme() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  // Persist chats to localStorage
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); setModelDropdownOpen(o => !o) }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'n') { e.preventDefault(); newChat() }
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [])
+
+  // Persist chats via localforage (IndexedDB-backed)
   useEffect(() => {
     if (storageLoadedRef.current) return
     storageLoadedRef.current = true
-    try {
-      const saved = localStorage.getItem('reemme-chats')
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setChats(parsed)
-          setActiveChatId(parsed[0].id)
-        }
+    localforage.getItem('reemme-chats').then(saved => {
+      if (Array.isArray(saved) && saved.length > 0) {
+        setChats(saved)
+        setActiveChatId(saved[0].id)
       }
-    } catch {}
+    }).catch(() => {})
   }, [])
 
   useEffect(() => {
     if (!storageLoadedRef.current) return
-    try { localStorage.setItem('reemme-chats', JSON.stringify(chats)) } catch {}
+    localforage.setItem('reemme-chats', chats).catch(() => {})
   }, [chats])
 
   const fetchModels = async () => {
@@ -146,7 +156,7 @@ export default function REEMme() {
       setModels(list)
       if (list.length > 0) setSelectedModel(list[0])
     } catch {
-      setError('Could not load models. Check your API keys in Vercel.')
+      toast.error('Could not load models. Check your API keys in Vercel.')
     } finally {
       setModelsLoading(false)
     }
@@ -466,9 +476,9 @@ export default function REEMme() {
           content: `![Generated Image](${data.image})\n\n*Generated via ${data.provider} · Prompt: "${prompt.slice(0, 80)}"*`
         }])
       } else {
-        setError('Image generation failed — check STABILITY_AI or REPLICATE keys')
+        toast.error('Image generation failed — check STABILITY_AI or REPLICATE keys')
       }
-    } catch { setError('Image generation error') }
+    } catch { toast.error('Image generation error') }
     setGeneratingImage(false)
   }
 
@@ -486,16 +496,18 @@ export default function REEMme() {
     if (preset) { setSystemPrompt(preset.value); setSelectedPreset(label) }
   }
 
-  const filteredModels = models.filter(m => {
-    const matchSearch = m.name.toLowerCase().includes(modelSearch.toLowerCase()) || m.provider.toLowerCase().includes(modelSearch.toLowerCase())
-    const matchProvider = providerFilter === 'all' || m.provider === providerFilter
-    return matchSearch && matchProvider
-  })
+  const filteredModels = (() => {
+    const providerFiltered = providerFilter === 'all' ? models : models.filter(m => m.provider === providerFilter)
+    if (!modelSearch.trim()) return providerFiltered
+    const fuse = new Fuse(providerFiltered, { keys: ['name', 'provider', 'id'], threshold: 0.4 })
+    return fuse.search(modelSearch).map(r => r.item)
+  })()
 
   const providers = ['all', ...new Set(models.map(m => m.provider))]
 
   return (
     <div style={S.root}>
+      <Toaster position="top-right" richColors theme="dark" />
       {/* ── Sidebar ── */}
       {sidebarOpen && (
         <aside style={S.sidebar}>
@@ -550,13 +562,22 @@ export default function REEMme() {
           {/* ── Repos tab ── */}
           {sidebarTab === 'repos' && (
             <div style={S.repoList}>
+              <input
+                style={{ ...S.modelSearchInput, margin: '4px 0 6px', width: '100%' }}
+                placeholder="Search repos…"
+                value={repoSearch}
+                onChange={e => setRepoSearch(e.target.value)}
+              />
               {reposLoading && <div style={S.sidebarEmpty}><div className="spinner" /></div>}
               {!reposLoading && repos.length === 0 && (
                 <div style={S.sidebarEmpty}>
                   <p style={{ color: 'var(--text3)', fontSize: 13 }}>No repos found.<br/>Check GitHub tokens.</p>
                 </div>
               )}
-              {repos.map(repo => (
+              {(repoSearch.trim()
+                ? new Fuse(repos, { keys: ['name', 'description', 'language', 'full_name'], threshold: 0.4 }).search(repoSearch).map(r => r.item)
+                : repos
+              ).map(repo => (
                 <div key={repo.full_name} style={S.repoItem}>
                   <div style={S.repoItemTop}>
                     <a href={repo.html_url} target="_blank" rel="noreferrer" style={S.repoName}>{repo.name}</a>
@@ -615,6 +636,20 @@ export default function REEMme() {
                         </span>
                       </div>
                     ))}
+                    {stripeData.charges?.length >= 2 && (
+                      <div style={{ padding: '8px 10px 6px' }}>
+                        <ResponsiveContainer width="100%" height={48}>
+                          <BarChart data={stripeData.charges.slice(0, 8).reverse().map((c, i) => ({ i, amount: c.amount / 100 }))}>
+                            <Bar dataKey="amount" fill="var(--gold)" radius={[2,2,0,0]} />
+                            <Tooltip
+                              contentStyle={{ background: 'var(--bg3)', border: '1px solid var(--border)', fontSize: 11 }}
+                              formatter={v => [`$${v.toFixed(2)}`, 'charge']}
+                              labelFormatter={() => ''}
+                            />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
                   </div>
                 )}
                 {stripeData?.error && <p style={{ fontSize: 11, color: 'var(--text3)', padding: '4px 10px 8px' }}>Set STRIPE env var to enable</p>}
