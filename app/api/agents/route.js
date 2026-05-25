@@ -97,7 +97,7 @@ export async function POST(req) {
         content = await callOpenAICompat(def, messages)
       }
       return { provider: providerName, content, latencyMs: Date.now() - t0 }
-    })
+    }))
   )
 
   const responses = results.map((r, i) => {
