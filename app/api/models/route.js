@@ -5,10 +5,13 @@ const GROQ_FALLBACK = [
   { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B Versatile' },
   { id: 'llama-3.1-70b-versatile', name: 'Llama 3.1 70B Versatile' },
   { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B Instant' },
+  { id: 'llama-3.2-90b-vision-preview', name: 'Llama 3.2 90B Vision' },
+  { id: 'llama-3.2-11b-vision-preview', name: 'Llama 3.2 11B Vision' },
   { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B' },
   { id: 'gemma2-9b-it', name: 'Gemma 2 9B' },
+  { id: 'gemma-7b-it', name: 'Gemma 7B' },
   { id: 'deepseek-r1-distill-llama-70b', name: 'DeepSeek R1 Llama 70B' },
-  { id: 'llama-3.2-90b-vision-preview', name: 'Llama 3.2 90B Vision' },
+  { id: 'whisper-large-v3', name: 'Whisper Large V3' },
 ]
 
 const CEREBRAS_MODELS = [
@@ -16,6 +19,8 @@ const CEREBRAS_MODELS = [
   { id: 'llama3.1-70b', name: 'Llama 3.1 70B' },
   { id: 'llama3.3-70b', name: 'Llama 3.3 70B' },
   { id: 'llama-4-scout-17b-16e-instruct', name: 'Llama 4 Scout 17B' },
+  { id: 'llama3.1-70b', name: 'Llama 3.1 70B (Cerebras)' },
+  { id: 'llama3.3-70b', name: 'Llama 3.3 70B (Cerebras)' },
 ]
 
 const GEMINI_MODELS = [
