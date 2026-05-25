@@ -75,12 +75,27 @@ export default function REEMme() {
   const [hfSearch, setHfSearch] = useState('')
   const [hfType, setHfType] = useState('models')
   const [repoFileLoading, setRepoFileLoading] = useState(null)
+  // File upload
+  const [attachedFiles, setAttachedFiles] = useState([])
+  const [uploadingFile, setUploadingFile] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+  // Multi-agent mode
+  const [multiAgentMode, setMultiAgentMode] = useState(false)
+  const [multiAgentResults, setMultiAgentResults] = useState([])
+  const [multiAgentLoading, setMultiAgentLoading] = useState(false)
+  const [multiAgentProviders, setMultiAgentProviders] = useState(['groq', 'gemini', 'cerebras', 'fireworks'])
+  // New integrations
+  const [deployData, setDeployData] = useState(null)
+  const [firefliesData, setFirefliesData] = useState(null)
+  const [heygenLoading, setHeygenLoading] = useState(false)
+  const [heygenVideo, setHeygenVideo] = useState(null)
 
   const bottomRef = useRef(null)
   const textareaRef = useRef(null)
   const dropdownRef = useRef(null)
   const abortRef = useRef(null)
   const storageLoadedRef = useRef(false)
+  const fileInputRef = useRef(null)
 
   const activeChat = chats.find(c => c.id === activeChatId)
   const messages = activeChat?.messages || []
@@ -183,6 +198,94 @@ export default function REEMme() {
     finally { setRepoFileLoading(null) }
   }
 
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingFile(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/upload', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (data.content) {
+        setAttachedFiles(prev => [...prev, { name: file.name, content: data.content, isImage: !!data.isImage, pages: data.pages }])
+      } else {
+        setError(data.error || 'File upload failed')
+      }
+    } catch (e) { setError(e.message) }
+    finally { setUploadingFile(false); if (fileInputRef.current) fileInputRef.current.value = '' }
+  }
+
+  const removeAttachment = (i) => setAttachedFiles(prev => prev.filter((_, j) => j !== i))
+
+  const runMultiAgent = async () => {
+    if (!input.trim() && !attachedFiles.length) return
+    setMultiAgentLoading(true)
+    setMultiAgentResults([])
+    try {
+      const content = buildMessageContent()
+      const msgs = systemPrompt
+        ? [{ role: 'system', content: systemPrompt }, { role: 'user', content }]
+        : [{ role: 'user', content }]
+      const res = await fetch('/api/agents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: msgs, providers: multiAgentProviders }),
+      })
+      const data = await res.json()
+      setMultiAgentResults(data.responses || [])
+    } catch (e) { setError(e.message) }
+    setMultiAgentLoading(false)
+  }
+
+  const buildMessageContent = () => {
+    const parts = []
+    if (attachedFiles.length > 0) {
+      attachedFiles.forEach(f => {
+        if (f.isImage) {
+          parts.push(`[Attached image: ${f.name}]`)
+        } else {
+          parts.push(`--- File: ${f.name} ---\n${f.content.slice(0, 8000)}${f.content.length > 8000 ? '\n...(truncated)' : ''}\n---`)
+        }
+      })
+    }
+    if (input.trim()) parts.push(input.trim())
+    return parts.join('\n\n')
+  }
+
+  const generateHeygenVideo = async (text) => {
+    setHeygenLoading(true)
+    setHeygenVideo(null)
+    try {
+      const res = await fetch('/api/heygen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text.slice(0, 1500) }),
+      })
+      const data = await res.json()
+      if (data.videoUrl) setHeygenVideo(data.videoUrl)
+      else if (data.videoId) setHeygenVideo({ pending: true, videoId: data.videoId })
+      else setError(data.error || 'HeyGen failed')
+    } catch (e) { setError(e.message) }
+    setHeygenLoading(false)
+  }
+
+  const fetchDeployData = async () => {
+    if (deployData) return
+    try {
+      const res = await fetch('/api/deploy')
+      setDeployData(await res.json())
+    } catch {}
+  }
+
+  const fetchFirefliesData = async () => {
+    if (firefliesData) return
+    try {
+      const res = await fetch('/api/fireflies?action=list')
+      setFirefliesData(await res.json())
+    } catch {}
+  }
+
   const exportChat = () => {
     if (!messages.length) return
     const title = activeChat?.title || 'Chat'
@@ -233,14 +336,16 @@ export default function REEMme() {
   }, [])
 
   const sendMessage = async () => {
-    if (!input.trim() || isStreaming || !selectedModel) return
+    if ((!input.trim() && !attachedFiles.length) || isStreaming || !selectedModel) return
     const chatId = activeChatId
-    const userMsg = { role: 'user', content: input.trim() }
+    const finalContent = buildMessageContent()
+    const userMsg = { role: 'user', content: finalContent }
     const currentMessages = activeChat?.messages || []
     const newMessages = [...currentMessages, userMsg]
     updateMessages(chatId, newMessages)
-    if (currentMessages.length === 0) updateChatTitle(chatId, getFirstLine(input))
+    if (currentMessages.length === 0) updateChatTitle(chatId, getFirstLine(finalContent))
     setInput('')
+    setAttachedFiles([])
     setIsStreaming(true)
     setError('')
 
@@ -591,6 +696,94 @@ export default function REEMme() {
                 </div>
               </div>
 
+              {/* Fireflies */}
+              <div style={S.toolSection}>
+                <div style={S.toolSectionHeader}>
+                  <span>🦗 Fireflies</span>
+                  <button style={{ ...S.toolBadge, background: '#6366f1', cursor: 'pointer', border: 'none' }} onClick={fetchFirefliesData}>
+                    {firefliesData ? `${firefliesData.transcripts?.length || 0} meetings` : 'load'}
+                  </button>
+                </div>
+                {firefliesData?.transcripts?.length > 0 && (
+                  <div style={S.toolCard}>
+                    {firefliesData.transcripts.slice(0, 3).map((t, i) => (
+                      <div key={i} style={S.toolRow}>
+                        <span style={{ ...S.toolLabel, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</span>
+                        <span style={S.toolValue}>{Math.round(t.duration / 60)}m</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {firefliesData?.error && <p style={{ fontSize: 11, color: 'var(--text3)', padding: '4px 10px 8px' }}>Configure FIREFLIES key</p>}
+              </div>
+
+              {/* Deployments */}
+              <div style={S.toolSection}>
+                <div style={S.toolSectionHeader}>
+                  <span>🚀 Deploy</span>
+                  <button style={{ ...S.toolBadge, background: '#8b5cf6', cursor: 'pointer', border: 'none' }} onClick={fetchDeployData}>
+                    {deployData ? 'refresh' : 'load'}
+                  </button>
+                </div>
+                {deployData && (
+                  <div style={S.toolCard}>
+                    {deployData.netlify?.sites?.slice(0, 2).map((s, i) => (
+                      <div key={i} style={S.toolRow}>
+                        <span style={S.toolLabel}>▲ {s.name?.slice(0, 18)}</span>
+                        <span style={{ ...S.toolValue, color: s.buildStatus === 'ready' ? 'var(--green)' : 'var(--text3)' }}>{s.buildStatus || s.state}</span>
+                      </div>
+                    ))}
+                    {deployData.railway?.projects?.slice(0, 2).map((p, i) => (
+                      <div key={i} style={S.toolRow}>
+                        <span style={S.toolLabel}>🚂 {p.name?.slice(0, 18)}</span>
+                        <span style={{ ...S.toolValue, color: 'var(--green)' }}>live</span>
+                      </div>
+                    ))}
+                    {!deployData.netlify?.sites?.length && !deployData.railway?.projects?.length && (
+                      <div style={S.toolRow}><span style={S.toolLabel}>Add NETLIFY + RAILWAY env vars</span></div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Make.com */}
+              <div style={S.toolSection}>
+                <div style={S.toolSectionHeader}>
+                  <span>⚙️ Make.com</span>
+                  <span style={{ ...S.toolBadge, background: '#ec4899' }}>Saeed G.</span>
+                </div>
+                <div style={S.toolCard}>
+                  <div style={S.toolRow}><span style={S.toolLabel}>Org</span><span style={S.toolValue}>My Organization</span></div>
+                  <div style={S.toolRow}><span style={S.toolLabel}>Team</span><span style={S.toolValue}>My Team</span></div>
+                  <div style={S.toolRow}><span style={S.toolLabel}>Scenarios</span><span style={S.toolValue}>Add MAKE_API_KEY to activate</span></div>
+                </div>
+              </div>
+
+              {/* HeyGen */}
+              <div style={S.toolSection}>
+                <div style={S.toolSectionHeader}>
+                  <span>🎬 HeyGen</span>
+                  <span style={{ ...S.toolBadge, background: 'var(--green)' }}>connected</span>
+                </div>
+                <div style={S.toolCard}>
+                  <div style={S.toolRow}><span style={S.toolLabel}>Video AI</span><span style={{ ...S.toolValue, color: 'var(--green)' }}>ready</span></div>
+                  <div style={S.toolRow}><span style={S.toolLabel}>Usage</span><span style={S.toolValue}>Click 🎬 on any AI reply</span></div>
+                </div>
+              </div>
+
+              {/* Security */}
+              <div style={S.toolSection}>
+                <div style={S.toolSectionHeader}>
+                  <span>🔒 Security</span>
+                  <span style={{ ...S.toolBadge, background: '#ef4444' }}>3 tools</span>
+                </div>
+                <div style={S.toolCard}>
+                  <div style={S.toolRow}><span style={S.toolLabel}>Shodan</span><span style={{ ...S.toolValue, color: 'var(--green)' }}>connected</span></div>
+                  <div style={S.toolRow}><span style={S.toolLabel}>VirusTotal</span><span style={{ ...S.toolValue, color: 'var(--green)' }}>connected</span></div>
+                  <div style={S.toolRow}><span style={S.toolLabel}>AI or Not</span><span style={{ ...S.toolValue, color: 'var(--green)' }}>connected</span></div>
+                </div>
+              </div>
+
               {/* AI Providers */}
               <div style={S.toolSection}>
                 <div style={S.toolSectionHeader}>
@@ -784,8 +977,33 @@ export default function REEMme() {
           </div>
         )}
 
+        {/* Hidden file input */}
+        <input
+          type="file" ref={fileInputRef} style={{ display: 'none' }}
+          onChange={handleFileUpload}
+          accept=".txt,.md,.js,.ts,.jsx,.tsx,.py,.java,.cpp,.c,.h,.cs,.go,.rs,.rb,.php,.swift,.kt,.json,.yaml,.yml,.toml,.xml,.html,.css,.scss,.sh,.bash,.sql,.graphql,.pdf,.png,.jpg,.jpeg,.gif,.webp"
+        />
+
         {/* Messages */}
-        <div style={S.messages}>
+        <div
+          style={{ ...S.messages, ...(isDragging ? S.dragging : {}) }}
+          onDragOver={e => { e.preventDefault(); setIsDragging(true) }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={async e => {
+            e.preventDefault(); setIsDragging(false)
+            const file = e.dataTransfer.files[0]
+            if (!file) return
+            setUploadingFile(true)
+            try {
+              const fd = new FormData(); fd.append('file', file)
+              const res = await fetch('/api/upload', { method: 'POST', body: fd })
+              const data = await res.json()
+              if (data.content) setAttachedFiles(prev => [...prev, { name: file.name, content: data.content, isImage: !!data.isImage, pages: data.pages }])
+              else setError(data.error || 'Upload failed')
+            } catch (err) { setError(err.message) }
+            finally { setUploadingFile(false) }
+          }}
+        >
           {messages.length === 0 && (
             <div style={S.welcome} className="fade-in">
               <div style={S.welcomeIcon}>⬡</div>
@@ -841,6 +1059,14 @@ export default function REEMme() {
                           >
                             📋
                           </button>
+                          <button
+                            onClick={() => generateHeygenVideo(msg.content)}
+                            disabled={heygenLoading}
+                            style={{ padding: '2px 8px', fontSize: 11, background: 'var(--bg4)', border: '1px solid var(--border2)', borderRadius: 4, color: heygenLoading ? 'var(--gold)' : 'var(--text3)', cursor: 'pointer' }}
+                            title="Generate HeyGen video from this response"
+                          >
+                            {heygenLoading ? '⏳' : '🎬'}
+                          </button>
                           {msg.providerUsed && (
                             <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--font-mono)', background: 'var(--bg4)', padding: '2px 6px', borderRadius: 4, border: '1px solid var(--border)' }}>
                               via {PROVIDER_LABELS[msg.providerUsed] || msg.providerUsed}
@@ -865,11 +1091,106 @@ export default function REEMme() {
             </div>
           )}
 
+          {/* HeyGen video output */}
+          {heygenVideo && (
+            <div style={S.heygenVideoBox} className="fade-in">
+              <div style={S.heygenVideoHeader}>🎬 HeyGen Video</div>
+              {typeof heygenVideo === 'string' ? (
+                <video src={heygenVideo} controls style={{ width: '100%', borderRadius: 6, marginTop: 8 }} />
+              ) : heygenVideo.pending ? (
+                <div style={{ padding: '12px 0', color: 'var(--text3)', fontSize: 13 }}>
+                  <div className="spinner" style={{ display: 'inline-block', marginRight: 8 }} />
+                  Video rendering… Video ID: {heygenVideo.videoId}
+                </div>
+              ) : null}
+              <button onClick={() => setHeygenVideo(null)} style={{ fontSize: 11, color: 'var(--text3)', marginTop: 8 }}>✕ Dismiss</button>
+            </div>
+          )}
+
+          {/* Multi-agent results */}
+          {multiAgentResults.length > 0 && (
+            <div style={S.multiAgentSection} className="fade-in">
+              <div style={S.multiAgentSectionHeader}>
+                <span>🤖 Multi-Agent Comparison · {multiAgentResults.length} providers</span>
+                <button onClick={() => setMultiAgentResults([])} style={{ fontSize: 11, color: 'var(--text3)' }}>✕</button>
+              </div>
+              <div style={S.multiAgentGrid}>
+                {multiAgentResults.map((r, i) => (
+                  <div key={i} style={S.multiAgentCard}>
+                    <div style={S.multiAgentCardHeader}>
+                      <span style={{ ...S.providerDot, background: PROVIDER_COLORS[r.provider] || '#888', width: 8, height: 8 }} />
+                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)', flex: 1 }}>{PROVIDER_LABELS[r.provider] || r.provider}</span>
+                      {r.latencyMs && <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--font-mono)' }}>{r.latencyMs}ms</span>}
+                      <button onClick={() => navigator.clipboard?.writeText(r.content || '')} style={{ fontSize: 10, color: 'var(--text3)', marginLeft: 4 }}>📋</button>
+                    </div>
+                    <div style={S.multiAgentCardBody}>
+                      {r.error ? <span style={{ color: 'var(--red)', fontSize: 12 }}>{r.error}</span> : (
+                        <div className="prose"><ReactMarkdown>{r.content || ''}</ReactMarkdown></div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {multiAgentLoading && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 24px', color: 'var(--text3)', fontSize: 13 }} className="fade-in">
+              <div className="spinner" />
+              Running {multiAgentProviders.length} providers in parallel…
+            </div>
+          )}
+
           <div ref={bottomRef} />
         </div>
 
         {/* Input */}
         <div style={S.inputArea}>
+          {/* Multi-agent controls */}
+          {multiAgentMode && (
+            <div style={S.multiAgentControls}>
+              <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--font-mono)', flexShrink: 0 }}>Agents:</span>
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', flex: 1 }}>
+                {Object.entries(PROVIDER_LABELS).map(([key, label]) => (
+                  <button
+                    key={key}
+                    style={{ ...S.providerChip, ...(multiAgentProviders.includes(key) ? { background: PROVIDER_COLORS[key] || 'var(--gold)', borderColor: PROVIDER_COLORS[key] || 'var(--gold)', color: '#fff' } : {}) }}
+                    onClick={() => setMultiAgentProviders(prev => prev.includes(key) ? prev.filter(p => p !== key) : [...prev, key])}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <button
+                style={{ padding: '4px 12px', borderRadius: 6, background: '#6366f1', border: 'none', color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer', flexShrink: 0, opacity: (input.trim() || attachedFiles.length) && multiAgentProviders.length ? 1 : 0.4 }}
+                onClick={runMultiAgent}
+                disabled={multiAgentLoading || (!input.trim() && !attachedFiles.length) || multiAgentProviders.length === 0}
+              >
+                {multiAgentLoading ? '⏳' : '▶ Run All'}
+              </button>
+            </div>
+          )}
+
+          {/* Attachment chips */}
+          {(attachedFiles.length > 0 || uploadingFile) && (
+            <div style={S.attachChipsRow}>
+              {attachedFiles.map((f, idx) => (
+                <div key={idx} style={S.attachChip}>
+                  <span>{f.isImage ? '🖼️' : '📄'}</span>
+                  <span style={S.attachChipName}>{f.name}</span>
+                  {f.pages && <span style={S.attachChipMeta}>{f.pages}p</span>}
+                  <button onClick={() => removeAttachment(idx)} style={S.attachChipRemove}>✕</button>
+                </div>
+              ))}
+              {uploadingFile && (
+                <div style={S.attachChip}>
+                  <div className="spinner" style={{ width: 10, height: 10 }} />
+                  <span style={S.attachChipName}>Uploading…</span>
+                </div>
+              )}
+            </div>
+          )}
+
           <div style={S.inputBox}>
             <textarea
               ref={textareaRef}
@@ -892,6 +1213,21 @@ export default function REEMme() {
                 title="Toggle web search"
               >
                 🔍
+              </button>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingFile}
+                style={{ padding: '6px 10px', borderRadius: 6, background: attachedFiles.length > 0 ? 'rgba(212,168,83,0.15)' : 'var(--bg4)', border: `1px solid ${attachedFiles.length > 0 ? 'var(--gold)' : 'var(--border2)'}`, color: attachedFiles.length > 0 ? 'var(--gold)' : 'var(--text3)', fontSize: 11, cursor: 'pointer', marginLeft: 4 }}
+                title="Attach file (PDF, code, images)"
+              >
+                {uploadingFile ? '⏳' : `📎${attachedFiles.length > 0 ? ` ${attachedFiles.length}` : ''}`}
+              </button>
+              <button
+                onClick={() => setMultiAgentMode(m => !m)}
+                style={{ padding: '6px 10px', borderRadius: 6, background: multiAgentMode ? 'rgba(99,102,241,0.2)' : 'var(--bg4)', border: `1px solid ${multiAgentMode ? '#6366f1' : 'var(--border2)'}`, color: multiAgentMode ? '#6366f1' : 'var(--text3)', fontSize: 11, cursor: 'pointer', marginLeft: 4 }}
+                title="Multi-agent comparison mode"
+              >
+                🤖
               </button>
               <button
                 onClick={generateImage}
@@ -918,7 +1254,7 @@ export default function REEMme() {
             </div>
           </div>
           <div style={S.inputFooter}>
-            Enter to send · Shift+Enter for newline · 🎤 Voice · 🔍 Web Search · 🖼️ Image Gen ·&nbsp;
+            Enter to send · Shift+Enter newline · 🎤 Voice · 🔍 Web · 🖼️ Image · 📎 Files · 🤖 Multi-agent · Drop files to attach ·&nbsp;
             <span style={{ color: 'var(--gold)', opacity: 0.7 }}>{selectedModel?.name || 'no model selected'}</span>
           </div>
         </div>
@@ -1021,6 +1357,31 @@ const S = {
   messageRole: { fontSize: 11, fontWeight: 600, color: 'var(--text3)', marginBottom: 6, letterSpacing: '0.05em', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' },
   messageBody: { fontSize: 15, lineHeight: 1.7, color: 'var(--text)', wordBreak: 'break-word' },
   errorBanner: { display: 'flex', alignItems: 'center', gap: 8, margin: '8px 24px', padding: '10px 14px', background: '#1f0a0a', border: '1px solid #5a1a1a', borderRadius: 8, color: 'var(--red)', fontSize: 13 },
+
+  // Drag-and-drop
+  dragging: { outline: '2px dashed var(--gold)', outlineOffset: -4, background: 'rgba(212,168,83,0.04)' },
+
+  // HeyGen video
+  heygenVideoBox: { margin: '8px 24px', padding: '14px 16px', background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 10, maxWidth: 640, alignSelf: 'center', width: 'calc(100% - 48px)' },
+  heygenVideoHeader: { fontSize: 12, fontWeight: 600, color: 'var(--text3)', letterSpacing: '0.04em', fontFamily: 'var(--font-mono)', marginBottom: 4 },
+
+  // Multi-agent section (in messages)
+  multiAgentSection: { margin: '8px 24px', maxWidth: 820, alignSelf: 'center', width: 'calc(100% - 48px)' },
+  multiAgentSectionHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, fontWeight: 600, color: 'var(--text3)', fontFamily: 'var(--font-mono)', letterSpacing: '0.04em', marginBottom: 8, padding: '0 2px' },
+  multiAgentGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 },
+  multiAgentCard: { background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 10, overflow: 'hidden' },
+  multiAgentCardHeader: { display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderBottom: '1px solid var(--border)', background: 'var(--bg4)' },
+  multiAgentCardBody: { padding: '10px 12px', fontSize: 13, lineHeight: 1.6, color: 'var(--text)', maxHeight: 260, overflowY: 'auto', wordBreak: 'break-word' },
+
+  // Multi-agent controls (above input)
+  multiAgentControls: { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0 8px', maxWidth: 820, margin: '0 auto', flexWrap: 'wrap' },
+
+  // Attachment chips
+  attachChipsRow: { display: 'flex', gap: 6, flexWrap: 'wrap', padding: '0 0 8px', maxWidth: 820, margin: '0 auto' },
+  attachChip: { display: 'flex', alignItems: 'center', gap: 5, padding: '4px 8px', background: 'var(--bg4)', border: '1px solid var(--border2)', borderRadius: 20, fontSize: 12, color: 'var(--text2)' },
+  attachChipName: { maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11 },
+  attachChipMeta: { fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--font-mono)' },
+  attachChipRemove: { fontSize: 10, color: 'var(--text3)', cursor: 'pointer', background: 'none', border: 'none', padding: '0 2px', lineHeight: 1 },
 
   // Input
   inputArea: { padding: '12px 16px 14px', background: 'var(--bg2)', borderTop: '1px solid var(--border)' },

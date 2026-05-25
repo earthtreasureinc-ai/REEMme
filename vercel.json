@@ -4,15 +4,22 @@
   "devCommand": "next dev",
   "installCommand": "npm install",
   "functions": {
-    "app/api/chat/route.js": { "maxDuration": 60 },
-    "app/api/image/route.js": { "maxDuration": 30 },
-    "app/api/search/route.js": { "maxDuration": 30 },
-    "app/api/tts/route.js": { "maxDuration": 30 },
-    "app/api/models/route.js": { "maxDuration": 30 },
-    "app/api/repos/route.js": { "maxDuration": 30 },
-    "app/api/stripe/route.js": { "maxDuration": 20 },
-    "app/api/github/file/route.js": { "maxDuration": 20 },
-    "app/api/hf/route.js": { "maxDuration": 20 },
-    "app/api/supabase/route.js": { "maxDuration": 20 }
+    "app/api/chat/route.js":          { "maxDuration": 60 },
+    "app/api/image/route.js":         { "maxDuration": 30 },
+    "app/api/search/route.js":        { "maxDuration": 30 },
+    "app/api/tts/route.js":           { "maxDuration": 30 },
+    "app/api/models/route.js":        { "maxDuration": 30 },
+    "app/api/repos/route.js":         { "maxDuration": 30 },
+    "app/api/stripe/route.js":        { "maxDuration": 20 },
+    "app/api/github/file/route.js":   { "maxDuration": 20 },
+    "app/api/hf/route.js":            { "maxDuration": 20 },
+    "app/api/supabase/route.js":      { "maxDuration": 20 },
+    "app/api/heygen/route.js":        { "maxDuration": 120 },
+    "app/api/upload/route.js":        { "maxDuration": 30 },
+    "app/api/security/route.js":      { "maxDuration": 30 },
+    "app/api/agents/route.js":        { "maxDuration": 60 },
+    "app/api/fireflies/route.js":     { "maxDuration": 20 },
+    "app/api/deploy/route.js":        { "maxDuration": 30 },
+    "app/api/make/route.js":          { "maxDuration": 30 }
   }
 }
