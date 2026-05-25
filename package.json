@@ -24,11 +24,10 @@
     "uuid": "^11.0.2"
   },
   "engines": {
-    "node": ">=18 <19"
+    "node": "24.x"
   },
   "overrides": {
-    
-    "lodash": "4.17.21",
-    "axios": "1.7.2"
+    // If you later discover a vulnerable transitive dependency,
+    // add it here, e.g. "lodash": "4.17.21"
   }
 }
