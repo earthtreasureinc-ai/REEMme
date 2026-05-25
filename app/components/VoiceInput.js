@@ -2,60 +2,58 @@
 import { useState, useRef } from 'react'
 
 export default function VoiceInput({ onTranscript, disabled }) {
-  const [isListening, setIsListening] = useState(false)
-  const [transcript, setTranscript] = useState('')
+  const [listening, setListening] = useState(false)
   const recognitionRef = useRef(null)
 
-  const startListening = () => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-    if (!SpeechRecognition) {
-      alert('Speech Recognition not supported in your browser')
+  const toggle = () => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SR) return
+
+    if (listening) {
+      recognitionRef.current?.abort()
+      setListening(false)
       return
     }
-    
-    recognitionRef.current = new SpeechRecognition()
-    recognitionRef.current.continuous = false
-    recognitionRef.current.interimResults = true
-    
-    recognitionRef.current.onstart = () => setIsListening(true)
-    recognitionRef.current.onend = () => setIsListening(false)
-    recognitionRef.current.onresult = (event) => {
-      let interimTranscript = ''
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript
-        if (event.results[i].isFinal) {
-          setTranscript(prev => prev + transcript + ' ')
-          onTranscript(transcript)
-        } else {
-          interimTranscript += transcript
-        }
-      }
-    }
-    recognitionRef.current.start()
-  }
 
-  const stopListening = () => {
-    if (recognitionRef.current) recognitionRef.current.abort()
-    setIsListening(false)
+    const r = new SR()
+    recognitionRef.current = r
+    r.continuous = false
+    r.interimResults = false
+    r.lang = 'en-US'
+    r.onstart = () => setListening(true)
+    r.onend   = () => setListening(false)
+    r.onerror = () => setListening(false)
+    r.onresult = (e) => {
+      const text = Array.from(e.results)
+        .map(r => r[0].transcript)
+        .join(' ')
+      onTranscript?.(text)
+    }
+    r.start()
   }
 
   return (
     <button
-      onClick={isListening ? stopListening : startListening}
+      onClick={toggle}
       disabled={disabled}
+      title={listening ? 'Stop recording' : 'Voice input'}
       style={{
-        padding: '6px 12px',
+        width: 34,
+        height: 34,
         borderRadius: 8,
-        background: isListening ? '#f87171' : 'var(--bg4)',
-        border: '1px solid var(--border2)',
-        color: isListening ? '#fff' : 'var(--text2)',
-        fontSize: 12,
-        cursor: 'pointer',
-        fontFamily: 'var(--font)',
-        transition: 'all .15s',
+        background: listening ? 'rgba(224,80,80,0.15)' : 'var(--bg4)',
+        border: `1px solid ${listening ? 'rgba(224,80,80,0.4)' : 'var(--border2)'}`,
+        color: listening ? '#e05050' : 'var(--text3)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 14,
+        flexShrink: 0,
+        transition: 'all 0.15s',
+        animation: listening ? 'goldPulse 1.4s ease-in-out infinite' : 'none',
       }}
     >
-      {isListening ? '🎤 Stop' : '🎤 Voice'}
+      {listening ? '⏹' : '🎤'}
     </button>
   )
 }
