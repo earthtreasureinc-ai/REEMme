@@ -24,10 +24,10 @@
     "uuid": "^11.0.2"
   },
   "engines": {
-    "node": ">=18 <19"
+    "node": ">=18 <19"          // <-- explicit Node version, keep cache reuse
   },
   "overrides": {
-    // Example overrides – add only if you discover a vulnerable sub‑dependency
+    // Uncomment and fill in if you later need to force a safe sub‑dependency version
     // "lodash": "4.17.21",
     // "axios": "1.7.2"
   }
