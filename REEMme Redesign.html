@@ -1,0 +1,1477 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="sovereign" data-mode="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>REEMme — Redesign Prototypes</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@300;400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+
+<style>
+/* ════════════════════════════════════════════
+   THEME 1: SOVEREIGN REFINED
+   ════════════════════════════════════════════ */
+[data-theme="sovereign"][data-mode="dark"] {
+  --bg-0: #040a08; --bg-1: #060d0b; --bg-2: #0a1510; --bg-3: #0e1c17; --bg-4: #12231d;
+  --bg-elevated: #0c1812; --bg-glass: rgba(10,21,16,0.92);
+  --text-0: #f0f7f2; --text-1: #c8ddd0; --text-2: #7aa88c; --text-3: #3c6850;
+  --accent: #c8861a; --accent-hover: #dfa030; --accent-dim: rgba(200,134,26,0.12); --accent-bg: rgba(200,134,26,0.06);
+  --accent-2: #0d8860;
+  --border: #192e27; --border-2: #213b32; --border-3: #2c5042;
+  --success: #2eb87a; --warning: #e0a030; --error: #e05050; --info: #4090d0;
+  --font-heading: 'Playfair Display', Georgia, serif; --font-body: 'Plus Jakarta Sans', sans-serif; --font-mono: 'DM Mono', monospace;
+  --fw-heading: 600; --radius: 10px; --radius-lg: 14px; --radius-xl: 20px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.4); --shadow-accent: 0 0 0 1px rgba(200,134,26,0.2), 0 4px 20px rgba(200,134,26,0.08);
+  --msg-accent-border: 3px solid var(--accent); --msg-user-bg: var(--bg-3); --msg-ai-bg: transparent;
+  --sidebar-active: var(--accent-dim); --sidebar-active-border: var(--accent);
+  --input-bg: var(--bg-2); --input-border: var(--border-2);
+  --glass-blur: 0px; --glow: none; --gradient-accent: var(--accent);
+}
+[data-theme="sovereign"][data-mode="light"] {
+  --bg-0: #f4f7f5; --bg-1: #f8faf9; --bg-2: #eef3f0; --bg-3: #e4ebe7; --bg-4: #d8e2dc;
+  --bg-elevated: #ffffff; --bg-glass: rgba(248,250,249,0.92);
+  --text-0: #0a1510; --text-1: #1a3028; --text-2: #4a7a60; --text-3: #8ab098;
+  --accent: #9a6a10; --accent-hover: #b07a18; --accent-dim: rgba(154,106,16,0.1); --accent-bg: rgba(154,106,16,0.05);
+  --accent-2: #0a7050;
+  --border: #d0ddd6; --border-2: #b8ccc2; --border-3: #a0b8ac;
+  --success: #1a8a58; --warning: #b88020; --error: #c04040; --info: #3070b0;
+  --shadow: 0 2px 12px rgba(0,0,0,0.08); --shadow-accent: 0 0 0 1px rgba(154,106,16,0.15);
+  --msg-user-bg: var(--bg-3); --msg-ai-bg: transparent;
+}
+
+/* ════════════════════════════════════════════
+   THEME 2: MINIMAL SLATE
+   ════════════════════════════════════════════ */
+[data-theme="slate"][data-mode="dark"] {
+  --bg-0: #0b0d11; --bg-1: #0f1117; --bg-2: #16181f; --bg-3: #1c1e27; --bg-4: #24262f;
+  --bg-elevated: #191b24; --bg-glass: rgba(15,17,23,0.94);
+  --text-0: #eaecf0; --text-1: #b0b4be; --text-2: #6b7080; --text-3: #3e4250;
+  --accent: #6366f1; --accent-hover: #818cf8; --accent-dim: rgba(99,102,241,0.1); --accent-bg: rgba(99,102,241,0.05);
+  --accent-2: #8b5cf6;
+  --border: #1e2030; --border-2: #282a3a; --border-3: #353848;
+  --success: #22c55e; --warning: #eab308; --error: #ef4444; --info: #3b82f6;
+  --font-heading: 'Inter', sans-serif; --font-body: 'Inter', sans-serif; --font-mono: 'DM Mono', monospace;
+  --fw-heading: 600; --radius: 8px; --radius-lg: 10px; --radius-xl: 14px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.3); --shadow-accent: 0 0 0 1px rgba(99,102,241,0.2);
+  --msg-accent-border: none; --msg-user-bg: var(--bg-3); --msg-ai-bg: transparent;
+  --sidebar-active: var(--accent-dim); --sidebar-active-border: var(--accent);
+  --input-bg: var(--bg-2); --input-border: var(--border-2);
+  --glass-blur: 0px; --glow: none; --gradient-accent: var(--accent);
+}
+[data-theme="slate"][data-mode="light"] {
+  --bg-0: #f5f5f7; --bg-1: #fafafa; --bg-2: #f0f0f2; --bg-3: #e5e5ea; --bg-4: #d4d4d8;
+  --bg-elevated: #ffffff; --bg-glass: rgba(250,250,250,0.94);
+  --text-0: #111118; --text-1: #3a3a44; --text-2: #6b6b78; --text-3: #a0a0ae;
+  --accent: #4f46e5; --accent-hover: #4338ca; --accent-dim: rgba(79,70,229,0.08); --accent-bg: rgba(79,70,229,0.04);
+  --accent-2: #7c3aed;
+  --border: #e0e0e5; --border-2: #d0d0d8; --border-3: #c0c0ca;
+  --shadow: 0 1px 4px rgba(0,0,0,0.06); --shadow-accent: 0 0 0 1px rgba(79,70,229,0.12);
+}
+
+/* ════════════════════════════════════════════
+   THEME 3: BOLD REEM
+   ════════════════════════════════════════════ */
+[data-theme="bold"][data-mode="dark"] {
+  --bg-0: #050505; --bg-1: #0a0a0a; --bg-2: #141414; --bg-3: #1e1e1e; --bg-4: #282828;
+  --bg-elevated: #181818; --bg-glass: rgba(10,10,10,0.94);
+  --text-0: #fafafa; --text-1: #d4d4d4; --text-2: #888888; --text-3: #555555;
+  --accent: #f5a623; --accent-hover: #ffc04d; --accent-dim: rgba(245,166,35,0.12); --accent-bg: rgba(245,166,35,0.06);
+  --accent-2: #ff6b35;
+  --border: #222222; --border-2: #2e2e2e; --border-3: #3a3a3a;
+  --success: #34d399; --warning: #fbbf24; --error: #f87171; --info: #60a5fa;
+  --font-heading: 'Manrope', sans-serif; --font-body: 'Manrope', sans-serif; --font-mono: 'DM Mono', monospace;
+  --fw-heading: 800; --radius: 14px; --radius-lg: 18px; --radius-xl: 24px;
+  --shadow: 0 8px 32px rgba(0,0,0,0.5); --shadow-accent: 0 4px 24px rgba(245,166,35,0.15);
+  --msg-accent-border: none; --msg-user-bg: var(--bg-3); --msg-ai-bg: var(--bg-2);
+  --sidebar-active: var(--accent-dim); --sidebar-active-border: var(--accent);
+  --input-bg: var(--bg-2); --input-border: var(--border-2);
+  --glass-blur: 0px; --glow: none; --gradient-accent: linear-gradient(135deg, #f5a623, #ff6b35);
+}
+[data-theme="bold"][data-mode="light"] {
+  --bg-0: #f7f7f7; --bg-1: #fafafa; --bg-2: #f0f0f0; --bg-3: #e6e6e6; --bg-4: #d6d6d6;
+  --bg-elevated: #ffffff; --bg-glass: rgba(250,250,250,0.94);
+  --text-0: #0a0a0a; --text-1: #2a2a2a; --text-2: #666666; --text-3: #999999;
+  --accent: #d48a10; --accent-hover: #b87408; --accent-dim: rgba(212,138,16,0.1); --accent-bg: rgba(212,138,16,0.05);
+  --accent-2: #e05520;
+  --border: #e2e2e2; --border-2: #d0d0d0; --border-3: #bfbfbf;
+  --shadow: 0 2px 8px rgba(0,0,0,0.06); --shadow-accent: 0 2px 12px rgba(212,138,16,0.1);
+}
+
+/* ════════════════════════════════════════════
+   THEME 4: GLASS EXPERIMENTAL
+   ════════════════════════════════════════════ */
+[data-theme="glass"][data-mode="dark"] {
+  --bg-0: #030308; --bg-1: #08081a; --bg-2: rgba(255,255,255,0.04); --bg-3: rgba(255,255,255,0.06); --bg-4: rgba(255,255,255,0.09);
+  --bg-elevated: rgba(255,255,255,0.05); --bg-glass: rgba(8,8,26,0.8);
+  --text-0: #f0f0fa; --text-1: #b8b8d0; --text-2: #7070a0; --text-3: #404068;
+  --accent: #8b5cf6; --accent-hover: #a78bfa; --accent-dim: rgba(139,92,246,0.12); --accent-bg: rgba(139,92,246,0.06);
+  --accent-2: #2dd4bf;
+  --border: rgba(255,255,255,0.06); --border-2: rgba(255,255,255,0.1); --border-3: rgba(255,255,255,0.14);
+  --success: #34d399; --warning: #fbbf24; --error: #f87171; --info: #60a5fa;
+  --font-heading: 'Space Grotesk', sans-serif; --font-body: 'Inter', sans-serif; --font-mono: 'DM Mono', monospace;
+  --fw-heading: 700; --radius: 16px; --radius-lg: 20px; --radius-xl: 28px;
+  --shadow: 0 8px 32px rgba(0,0,0,0.4); --shadow-accent: 0 0 30px rgba(139,92,246,0.15);
+  --msg-accent-border: none; --msg-user-bg: rgba(255,255,255,0.05); --msg-ai-bg: transparent;
+  --sidebar-active: var(--accent-dim); --sidebar-active-border: var(--accent);
+  --input-bg: rgba(255,255,255,0.04); --input-border: var(--border-2);
+  --glass-blur: 16px; --glow: 0 0 40px rgba(139,92,246,0.08); --gradient-accent: linear-gradient(135deg, #8b5cf6, #2dd4bf);
+}
+[data-theme="glass"][data-mode="light"] {
+  --bg-0: #f0f0ff; --bg-1: #f5f5ff; --bg-2: rgba(0,0,0,0.03); --bg-3: rgba(0,0,0,0.05); --bg-4: rgba(0,0,0,0.08);
+  --bg-elevated: rgba(255,255,255,0.8); --bg-glass: rgba(245,245,255,0.85);
+  --text-0: #0a0a20; --text-1: #2a2a48; --text-2: #6060a0; --text-3: #9090b8;
+  --accent: #7c3aed; --accent-hover: #6d28d9; --accent-dim: rgba(124,58,237,0.1); --accent-bg: rgba(124,58,237,0.04);
+  --accent-2: #14b8a6;
+  --border: rgba(0,0,0,0.06); --border-2: rgba(0,0,0,0.1); --border-3: rgba(0,0,0,0.14);
+  --shadow: 0 2px 12px rgba(0,0,0,0.06); --shadow-accent: 0 0 20px rgba(124,58,237,0.08);
+  --glass-blur: 12px; --glow: none;
+}
+
+/* ════════════════════════ BASE RESET ════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg-0);color:var(--text-0);font-family:var(--font-body);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased;transition:background .3s,color .3s}
+button{cursor:pointer;border:none;background:none;font-family:inherit;color:inherit}
+input,textarea,select{font-family:inherit;color:inherit;outline:none}
+a{color:inherit;text-decoration:none}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border-3);border-radius:4px}
+::selection{background:var(--accent-dim);color:var(--text-0)}
+
+/* ════════════════════════ GLASS EFFECTS ════════════════════════ */
+[data-theme="glass"] .glass-panel{backdrop-filter:blur(var(--glass-blur));-webkit-backdrop-filter:blur(var(--glass-blur))}
+[data-theme="glass"] .glow-border{box-shadow:var(--glow)}
+
+/* ════════════════════════ ANIMATIONS ════════════════════════ */
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideIn{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes typing{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-4px)}}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+@keyframes gradientShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+.fade-in{animation:fadeIn .25s ease both}
+</style>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+/* ═══════════════════════════════════════════
+   REEM DATA — Sample data, theme config, shared utils
+   ═══════════════════════════════════════════ */
+
+const THEMES = [
+  { id: 'sovereign', name: 'Sovereign', desc: 'Evolved teal & gold', preview: ['#060d0b','#c8861a','#0d8860'] },
+  { id: 'slate', name: 'Minimal Slate', desc: 'Clean & neutral', preview: ['#0f1117','#6366f1','#282a3a'] },
+  { id: 'bold', name: 'Bold REEM', desc: 'Premium & energetic', preview: ['#0a0a0a','#f5a623','#ff6b35'] },
+  { id: 'glass', name: 'Glass', desc: 'Futuristic & experimental', preview: ['#08081a','#8b5cf6','#2dd4bf'] },
+];
+
+const PROVIDERS = [
+  { id: 'groq', name: 'Groq', color: '#f97316', models: ['llama-3.3-70b', 'mixtral-8x7b', 'gemma2-9b'] },
+  { id: 'openai', name: 'OpenAI', color: '#10a37f', models: ['gpt-4o', 'gpt-4o-mini', 'o1-preview'] },
+  { id: 'claude', name: 'Claude', color: '#d97706', models: ['claude-sonnet-4', 'claude-haiku-4', 'claude-opus-4'] },
+  { id: 'gemini', name: 'Gemini', color: '#4285f4', models: ['gemini-2.5-pro', 'gemini-2.5-flash'] },
+  { id: 'deepseek', name: 'DeepSeek', color: '#6366f1', models: ['deepseek-r1', 'deepseek-v3'] },
+  { id: 'cerebras', name: 'Cerebras', color: '#10b981', models: ['llama-3.3-70b'] },
+  { id: 'fireworks', name: 'Fireworks', color: '#ec4899', models: ['llama-v3p1-405b', 'mixtral-8x22b'] },
+  { id: 'nvidia', name: 'NVIDIA', color: '#76b900', models: ['nemotron-70b', 'llama-3.1-nemotron'] },
+  { id: 'mistral', name: 'Mistral', color: '#f59e0b', models: ['mistral-large', 'mistral-medium'] },
+  { id: 'openrouter', name: 'OpenRouter', color: '#8b5cf6', models: ['auto', 'meta/llama-3.3-70b'] },
+  { id: 'hf', name: 'HuggingFace', color: '#fbbf24', models: ['zephyr-7b', 'falcon-180b'] },
+];
+
+const SAMPLE_CHATS = [
+  { id: 'c1', title: 'Refactor auth module', time: '2m ago', model: 'claude-sonnet-4', provider: 'claude', preview: 'Help me refactor the authentication...' },
+  { id: 'c2', title: 'API rate limiting strategy', time: '1h ago', model: 'gpt-4o', provider: 'openai', preview: 'Design a rate limiting approach...' },
+  { id: 'c3', title: 'Deploy pipeline debug', time: '3h ago', model: 'deepseek-r1', provider: 'deepseek', preview: 'My Vercel deployment keeps failing...' },
+  { id: 'c4', title: 'React performance audit', time: 'Yesterday', model: 'llama-3.3-70b', provider: 'groq', preview: 'Analyze these React components...' },
+  { id: 'c5', title: 'Database schema design', time: '2 days ago', model: 'gemini-2.5-pro', provider: 'gemini', preview: 'Design a schema for user sessions...' },
+];
+
+const SAMPLE_REPOS = [
+  { name: 'REEMme', desc: 'AI chatbot', lang: 'JavaScript', stars: 12 },
+  { name: 'REEM', desc: 'Core platform', lang: 'TypeScript', stars: 8 },
+  { name: 'SuuqLink', desc: 'Marketplace', lang: 'Python', stars: 3 },
+];
+
+const SAMPLE_MESSAGES = [
+  {
+    role: 'user',
+    content: 'How do I implement streaming responses with the Vercel AI SDK in my Next.js app? I need it to work with multiple providers.',
+  },
+  {
+    role: 'assistant',
+    content: `Here's how to implement multi-provider streaming in Next.js using the Vercel AI SDK:
+
+## 1. Install Dependencies
+
+\`\`\`bash
+npm install ai @ai-sdk/openai @ai-sdk/anthropic
+\`\`\`
+
+## 2. Create the API Route
+
+\`\`\`typescript
+// app/api/chat/route.ts
+import { streamText } from 'ai';
+import { openai } from '@ai-sdk/openai';
+import { anthropic } from '@ai-sdk/anthropic';
+
+const providers = {
+  openai: (model) => openai(model),
+  anthropic: (model) => anthropic(model),
+};
+
+export async function POST(req: Request) {
+  const { messages, provider, model } = await req.json();
+  
+  const result = streamText({
+    model: providers[provider](model),
+    messages,
+  });
+
+  return result.toDataStreamResponse();
+}
+\`\`\`
+
+## 3. Client Component
+
+\`\`\`tsx
+'use client';
+import { useChat } from 'ai/react';
+
+export function Chat({ provider, model }) {
+  const { messages, input, handleSubmit } = useChat({
+    body: { provider, model },
+  });
+  // ... render messages
+}
+\`\`\`
+
+**Key points:**
+- The \`streamText\` function handles SSE streaming automatically
+- Each provider SDK normalizes the response format
+- You can switch providers at runtime by passing different \`body\` params
+- Error boundaries should wrap the chat for graceful fallbacks`,
+    model: 'claude-sonnet-4',
+    provider: 'claude',
+    tokens: 342,
+    time: '2.1s',
+  },
+  {
+    role: 'user',
+    content: 'Can you add error handling and a retry mechanism with fallback to a different provider?',
+  },
+  {
+    role: 'assistant',
+    content: `Great thinking — resilient multi-provider routing is critical. Here's the enhanced version:
+
+\`\`\`typescript
+const FALLBACK_CHAIN = ['anthropic', 'openai', 'groq'];
+
+async function streamWithFallback(messages, provider, model) {
+  for (const p of [provider, ...FALLBACK_CHAIN]) {
+    try {
+      return await streamText({
+        model: providers[p](model),
+        messages,
+        maxRetries: 2,
+      });
+    } catch (err) {
+      console.warn(\`Provider \${p} failed:\`, err.message);
+      continue;
+    }
+  }
+  throw new Error('All providers exhausted');
+}
+\`\`\`
+
+This gives you **automatic failover** — if Claude is down, it falls back to OpenAI, then Groq. The user never sees an error.`,
+    model: 'claude-sonnet-4',
+    provider: 'claude',
+    tokens: 187,
+    time: '1.4s',
+    streaming: true,
+  },
+];
+
+const COMMAND_ITEMS = [
+  { icon: '⊕', label: 'New Chat', shortcut: '⌘N', action: 'new-chat' },
+  { icon: '⚙', label: 'System Prompt', shortcut: '⌘.', action: 'system-prompt' },
+  { icon: '⬡', label: 'Switch Model', shortcut: '⌘M', action: 'model-picker' },
+  { icon: '◎', label: 'Search Chats', shortcut: '⌘F', action: 'search' },
+  { icon: '⇧', label: 'Upload File', shortcut: '⌘U', action: 'upload' },
+  { icon: '◈', label: 'Image Generation', shortcut: '⌘I', action: 'image-gen' },
+  { icon: '♫', label: 'Text to Speech', shortcut: '⌘T', action: 'tts' },
+  { icon: '⎔', label: 'Toggle Theme', shortcut: '⌘D', action: 'theme' },
+  { icon: '☰', label: 'Provider Stats', shortcut: '⌘P', action: 'stats' },
+  { icon: '⬡', label: 'Deploy', shortcut: '⌘⇧D', action: 'deploy' },
+];
+
+const SYSTEM_PROMPTS = [
+  { name: 'Default', prompt: 'You are REEM, a sovereign AI assistant.' },
+  { name: 'Code Expert', prompt: 'You are an expert programmer. Write clean, production-quality code with full error handling.' },
+  { name: 'Research', prompt: 'You are a research assistant. Provide well-sourced, thorough analysis.' },
+  { name: 'Creative', prompt: 'You are a creative collaborator. Think divergently and offer novel ideas.' },
+];
+
+// Expose to other scripts
+Object.assign(window, {
+  THEMES, PROVIDERS, SAMPLE_CHATS, SAMPLE_REPOS,
+  SAMPLE_MESSAGES, COMMAND_ITEMS, SYSTEM_PROMPTS,
+});
+
+</script>
+<script type="text/babel">
+/* ═══════════════════════════════════════════
+   REEM SIDEBAR — Chat list, repos, search
+   ═══════════════════════════════════════════ */
+const sidebarStyles = {
+  root: {
+    width: 280, minWidth: 280, height: '100%',
+    background: 'var(--bg-1)', borderRight: '1px solid var(--border)',
+    display: 'flex', flexDirection: 'column', flexShrink: 0,
+    transition: 'transform .25s cubic-bezier(.4,0,.2,1), background .3s',
+    position: 'relative', zIndex: 40,
+  },
+  header: {
+    padding: '16px 16px 12px', display: 'flex', alignItems: 'center',
+    justifyContent: 'space-between', borderBottom: '1px solid var(--border)',
+  },
+  logo: {
+    display: 'flex', alignItems: 'center', gap: 10,
+    fontFamily: 'var(--font-heading)', fontWeight: 'var(--fw-heading)',
+    fontSize: 18, letterSpacing: '-0.02em',
+  },
+  logoIcon: {
+    width: 32, height: 32, borderRadius: 'var(--radius)',
+    background: 'var(--accent)', display: 'flex',
+    alignItems: 'center', justifyContent: 'center',
+    fontSize: 16, color: '#fff', fontWeight: 700,
+  },
+  newBtn: {
+    display: 'flex', alignItems: 'center', gap: 8,
+    padding: '8px 14px', borderRadius: 'var(--radius)',
+    background: 'var(--accent)', color: '#fff',
+    fontSize: 13, fontWeight: 600, cursor: 'pointer',
+    transition: 'all .15s', border: 'none',
+  },
+  search: {
+    margin: '12px 12px 8px', padding: '8px 12px',
+    borderRadius: 'var(--radius)', border: '1px solid var(--border)',
+    background: 'var(--bg-2)', color: 'var(--text-0)',
+    fontSize: 13, width: 'calc(100% - 24px)',
+  },
+  section: {
+    padding: '8px 12px 4px', fontSize: 10, fontWeight: 600,
+    letterSpacing: '0.08em', textTransform: 'uppercase',
+    color: 'var(--text-3)', fontFamily: 'var(--font-mono)',
+  },
+  chatItem: {
+    padding: '10px 14px', margin: '1px 8px',
+    borderRadius: 'var(--radius)', cursor: 'pointer',
+    transition: 'all .12s', display: 'flex', flexDirection: 'column',
+    gap: 2, position: 'relative',
+  },
+  chatTitle: {
+    fontSize: 13, fontWeight: 500, color: 'var(--text-0)',
+    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+  },
+  chatMeta: {
+    display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-2)',
+  },
+  providerDot: (color) => ({
+    width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0,
+  }),
+  chatList: {
+    flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '4px 0',
+  },
+  repoItem: {
+    padding: '8px 14px', margin: '1px 8px',
+    borderRadius: 'var(--radius)', cursor: 'pointer',
+    transition: 'background .12s', display: 'flex', alignItems: 'center', gap: 10,
+  },
+  repoIcon: {
+    width: 28, height: 28, borderRadius: 'var(--radius)',
+    background: 'var(--bg-3)', display: 'flex',
+    alignItems: 'center', justifyContent: 'center',
+    fontSize: 13, color: 'var(--text-2)', flexShrink: 0,
+  },
+  footer: {
+    padding: '12px 16px', borderTop: '1px solid var(--border)',
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    fontSize: 12, color: 'var(--text-2)',
+  },
+  deleteBtn: {
+    position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+    width: 24, height: 24, borderRadius: 6,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: 13, color: 'var(--text-3)', opacity: 0,
+    transition: 'opacity .15s, background .12s',
+  },
+  mobileClose: {
+    width: 32, height: 32, borderRadius: 'var(--radius)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: 18, color: 'var(--text-2)',
+  },
+  overlay: {
+    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+    backdropFilter: 'blur(4px)', zIndex: 39, animation: 'fadeIn .18s ease',
+  },
+};
+
+function Sidebar({ activeChat, onSelectChat, onNewChat, onDeleteChat, sidebarOpen, onCloseSidebar, isMobile }) {
+  const [search, setSearch] = React.useState('');
+  const [hoveredChat, setHoveredChat] = React.useState(null);
+  const [showRepos, setShowRepos] = React.useState(true);
+
+  const filteredChats = SAMPLE_CHATS.filter(c =>
+    c.title.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const providerColor = (pid) => {
+    const p = PROVIDERS.find(x => x.id === pid);
+    return p ? p.color : 'var(--text-3)';
+  };
+
+  const rootStyle = {
+    ...sidebarStyles.root,
+    ...(isMobile ? {
+      position: 'fixed', left: 0, top: 0, bottom: 0,
+      transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+      boxShadow: sidebarOpen ? '8px 0 40px rgba(0,0,0,0.5)' : 'none',
+    } : {}),
+  };
+
+  return (
+    <React.Fragment>
+      {isMobile && sidebarOpen && (
+        <div style={sidebarStyles.overlay} onClick={onCloseSidebar} />
+      )}
+      <div className="glass-panel" style={rootStyle}>
+        {/* Header */}
+        <div style={sidebarStyles.header}>
+          <div style={sidebarStyles.logo}>
+            <div style={sidebarStyles.logoIcon}>R</div>
+            <span>REEM</span>
+          </div>
+          <div style={{ display: 'flex', gap: 4 }}>
+            {isMobile && (
+              <button style={sidebarStyles.mobileClose} onClick={onCloseSidebar}>✕</button>
+            )}
+          </div>
+        </div>
+
+        {/* New Chat */}
+        <div style={{ padding: '12px 12px 0' }}>
+          <button
+            style={sidebarStyles.newBtn}
+            onClick={onNewChat}
+            onMouseEnter={e => { e.target.style.filter = 'brightness(1.1)'; e.target.style.transform = 'translateY(-1px)'; }}
+            onMouseLeave={e => { e.target.style.filter = ''; e.target.style.transform = ''; }}
+          >
+            <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> New Chat
+          </button>
+        </div>
+
+        {/* Search */}
+        <input
+          style={sidebarStyles.search}
+          placeholder="Search chats..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+
+        {/* Chat List */}
+        <div style={sidebarStyles.section}>Conversations</div>
+        <div style={sidebarStyles.chatList}>
+          {filteredChats.map(chat => (
+            <div
+              key={chat.id}
+              style={{
+                ...sidebarStyles.chatItem,
+                background: activeChat === chat.id ? 'var(--sidebar-active)' : 'transparent',
+                borderLeft: activeChat === chat.id ? `2px solid var(--sidebar-active-border)` : '2px solid transparent',
+              }}
+              onClick={() => { onSelectChat(chat.id); if (isMobile) onCloseSidebar(); }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-3)'; setHoveredChat(chat.id); }}
+              onMouseLeave={e => { e.currentTarget.style.background = activeChat === chat.id ? 'var(--sidebar-active)' : 'transparent'; setHoveredChat(null); }}
+            >
+              <div style={sidebarStyles.chatTitle}>{chat.title}</div>
+              <div style={sidebarStyles.chatMeta}>
+                <span style={sidebarStyles.providerDot(providerColor(chat.provider))}></span>
+                <span>{chat.model}</span>
+                <span style={{ marginLeft: 'auto' }}>{chat.time}</span>
+              </div>
+              <button
+                style={{
+                  ...sidebarStyles.deleteBtn,
+                  opacity: hoveredChat === chat.id ? 0.7 : 0,
+                }}
+                onClick={e => { e.stopPropagation(); onDeleteChat(chat.id); }}
+                onMouseEnter={e => { e.target.style.background = 'var(--error)'; e.target.style.color = '#fff'; e.target.style.opacity = 1; }}
+                onMouseLeave={e => { e.target.style.background = ''; e.target.style.color = 'var(--text-3)'; }}
+              >✕</button>
+            </div>
+          ))}
+        </div>
+
+        {/* Repos */}
+        <div
+          style={{ ...sidebarStyles.section, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+          onClick={() => setShowRepos(!showRepos)}
+        >
+          <span style={{ fontSize: 8, transform: showRepos ? 'rotate(90deg)' : '', transition: 'transform .15s' }}>▶</span>
+          GitHub Repos
+        </div>
+        {showRepos && (
+          <div style={{ padding: '2px 0 8px', overflowY: 'auto', maxHeight: 160 }}>
+            {SAMPLE_REPOS.map(repo => (
+              <div
+                key={repo.name}
+                style={sidebarStyles.repoItem}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-3)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                <div style={sidebarStyles.repoIcon}>◇</div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{repo.name}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-2)' }}>{repo.desc} · {repo.lang}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Footer */}
+        <div style={sidebarStyles.footer}>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>v2.0</span>
+          <span>11 providers active</span>
+        </div>
+      </div>
+    </React.Fragment>
+  );
+}
+
+Object.assign(window, { Sidebar });
+
+</script>
+<script type="text/babel">
+/* ═══════════════════════════════════════════
+   REEM CHAT — Messages, input, markdown
+   ═══════════════════════════════════════════ */
+
+/* ── Markdown-lite renderer ── */
+function MarkdownContent({ text }) {
+  const blocks = React.useMemo(() => {
+    const lines = text.split('\n');
+    const result = [];
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i];
+      if (line.startsWith('```')) {
+        const lang = line.slice(3).trim();
+        const codeLines = [];
+        i++;
+        while (i < lines.length && !lines[i].startsWith('```')) {
+          codeLines.push(lines[i]); i++;
+        }
+        i++;
+        result.push({ type: 'code', lang, content: codeLines.join('\n') });
+      } else if (line.startsWith('## ')) {
+        result.push({ type: 'h2', content: line.slice(3) }); i++;
+      } else if (line.startsWith('# ')) {
+        result.push({ type: 'h1', content: line.slice(2) }); i++;
+      } else if (line.startsWith('**') && line.endsWith('**')) {
+        result.push({ type: 'bold', content: line.slice(2, -2) }); i++;
+      } else if (line.startsWith('- ')) {
+        const items = [];
+        while (i < lines.length && lines[i].startsWith('- ')) {
+          items.push(lines[i].slice(2)); i++;
+        }
+        result.push({ type: 'list', items });
+      } else if (line.trim() === '') {
+        i++;
+      } else {
+        result.push({ type: 'p', content: line }); i++;
+      }
+    }
+    return result;
+  }, [text]);
+
+  const renderInline = (text) => {
+    const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('`') && part.endsWith('`'))
+        return <code key={i} style={chatS.inlineCode}>{part.slice(1, -1)}</code>;
+      if (part.startsWith('**') && part.endsWith('**'))
+        return <strong key={i} style={{ color: 'var(--text-0)', fontWeight: 600 }}>{part.slice(2, -2)}</strong>;
+      return <span key={i}>{part}</span>;
+    });
+  };
+
+  return (
+    <div style={chatS.prose}>
+      {blocks.map((block, i) => {
+        switch (block.type) {
+          case 'h1': return <h2 key={i} style={chatS.heading}>{block.content}</h2>;
+          case 'h2': return <h3 key={i} style={chatS.subheading}>{block.content}</h3>;
+          case 'bold': return <p key={i} style={{ ...chatS.paragraph, fontWeight: 600, color: 'var(--text-0)' }}>{block.content}</p>;
+          case 'p': return <p key={i} style={chatS.paragraph}>{renderInline(block.content)}</p>;
+          case 'list': return (
+            <ul key={i} style={chatS.list}>
+              {block.items.map((item, j) => <li key={j} style={chatS.listItem}>{renderInline(item)}</li>)}
+            </ul>
+          );
+          case 'code': return <CodeBlock key={i} lang={block.lang} code={block.content} />;
+          default: return null;
+        }
+      })}
+    </div>
+  );
+}
+
+function CodeBlock({ lang, code }) {
+  const [copied, setCopied] = React.useState(false);
+  const copy = () => {
+    navigator.clipboard?.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+  return (
+    <div style={chatS.codeBlock}>
+      <div style={chatS.codeHeader}>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-2)' }}>{lang || 'code'}</span>
+        <button onClick={copy} style={chatS.copyBtn}>
+          {copied ? '✓ Copied' : 'Copy'}
+        </button>
+      </div>
+      <pre style={chatS.codePre}><code>{code}</code></pre>
+    </div>
+  );
+}
+
+/* ── Streaming dots ── */
+function StreamingIndicator() {
+  return (
+    <span style={{ display: 'inline-flex', gap: 3, padding: '4px 0' }}>
+      {[0, 1, 2].map(i => (
+        <span key={i} style={{
+          width: 5, height: 5, borderRadius: '50%',
+          background: 'var(--accent)', opacity: 0.6,
+          animation: `typing 1.2s ease-in-out ${i * 0.15}s infinite`,
+        }} />
+      ))}
+    </span>
+  );
+}
+
+/* ── Message bubble ── */
+function MessageBubble({ msg, isLast }) {
+  const [hovered, setHovered] = React.useState(false);
+  const isUser = msg.role === 'user';
+  const providerData = PROVIDERS.find(p => p.id === msg.provider);
+
+  return (
+    <div
+      className="fade-in"
+      style={{
+        ...chatS.msgRow,
+        justifyContent: isUser ? 'flex-end' : 'flex-start',
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {!isUser && (
+        <div style={{
+          ...chatS.avatar,
+          background: providerData ? providerData.color : 'var(--accent)',
+        }}>
+          {providerData ? providerData.name[0] : 'R'}
+        </div>
+      )}
+      <div style={{
+        ...chatS.msgBubble,
+        background: isUser ? 'var(--msg-user-bg)' : 'var(--msg-ai-bg)',
+        borderLeft: !isUser ? 'var(--msg-accent-border)' : 'none',
+        maxWidth: isUser ? 520 : 'var(--msg-max, 720px)',
+      }}>
+        {!isUser && (
+          <div style={chatS.msgModelTag}>
+            <span style={{
+              width: 6, height: 6, borderRadius: '50%',
+              background: providerData?.color || 'var(--accent)',
+            }}></span>
+            <span>{msg.model || 'REEM'}</span>
+            {msg.tokens && <span style={{ color: 'var(--text-3)' }}>· {msg.tokens} tokens</span>}
+            {msg.time && <span style={{ color: 'var(--text-3)' }}>· {msg.time}</span>}
+          </div>
+        )}
+        {isUser ? (
+          <p style={{ fontSize: 14, lineHeight: 1.65, color: 'var(--text-0)' }}>{msg.content}</p>
+        ) : (
+          <MarkdownContent text={msg.content} />
+        )}
+        {isLast && msg.streaming && <StreamingIndicator />}
+
+        {/* Actions */}
+        {hovered && (
+          <div style={chatS.msgActions}>
+            <button style={chatS.msgActionBtn} title="Copy">⎘</button>
+            {!isUser && <button style={chatS.msgActionBtn} title="Regenerate">↻</button>}
+            {!isUser && <button style={chatS.msgActionBtn} title="Share">⇧</button>}
+          </div>
+        )}
+      </div>
+      {isUser && (
+        <div style={{ ...chatS.avatar, background: 'var(--accent-2)' }}>U</div>
+      )}
+    </div>
+  );
+}
+
+/* ── Empty state ── */
+function EmptyState() {
+  const hints = [
+    { icon: '⬡', label: 'Refactor my auth module' },
+    { icon: '◈', label: 'Generate a landing page' },
+    { icon: '◎', label: 'Debug my Vercel deploy' },
+    { icon: '⎔', label: 'Design a database schema' },
+  ];
+  return (
+    <div style={chatS.emptyRoot}>
+      <div style={chatS.emptyLogo}>R</div>
+      <h1 style={chatS.emptyTitle}>What can I help you build?</h1>
+      <p style={chatS.emptySubtitle}>11 AI providers · Streaming · Code · Images · Voice</p>
+      <div style={chatS.hintGrid}>
+        {hints.map((h, i) => (
+          <button
+            key={i} style={chatS.hintCard}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-3)'; e.currentTarget.style.background = 'var(--bg-3)'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--bg-2)'; }}
+          >
+            <span style={{ fontSize: 20, color: 'var(--accent)' }}>{h.icon}</span>
+            <span style={{ fontSize: 13, color: 'var(--text-1)' }}>{h.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Input area ── */
+function ChatInput({ onSend, isStreaming, onStop }) {
+  const [text, setText] = React.useState('');
+  const [focused, setFocused] = React.useState(false);
+  const [dragOver, setDragOver] = React.useState(false);
+  const textareaRef = React.useRef(null);
+
+  const handleSubmit = () => {
+    if (!text.trim() || isStreaming) return;
+    onSend(text.trim());
+    setText('');
+    if (textareaRef.current) textareaRef.current.style.height = '24px';
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); }
+  };
+
+  const autoGrow = (e) => {
+    const el = e.target;
+    el.style.height = '24px';
+    el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+  };
+
+  return (
+    <div style={chatS.inputWrapper}>
+      <div
+        style={{
+          ...chatS.inputBox,
+          borderColor: focused ? 'var(--border-3)' : 'var(--border)',
+          boxShadow: focused ? 'var(--shadow-accent)' : 'none',
+          outline: dragOver ? '2px dashed var(--accent)' : 'none',
+        }}
+        onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={e => { e.preventDefault(); setDragOver(false); }}
+      >
+        <div style={chatS.inputRow}>
+          <button style={chatS.attachBtn} title="Upload file">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" strokeWidth="2" strokeLinecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+          </button>
+          <textarea
+            ref={textareaRef}
+            style={chatS.textarea}
+            placeholder="Message REEM..."
+            value={text}
+            onChange={e => { setText(e.target.value); autoGrow(e); }}
+            onKeyDown={handleKeyDown}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            rows={1}
+          />
+          <button style={chatS.voiceBtn} title="Voice input">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" strokeWidth="2" strokeLinecap="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+          </button>
+          {isStreaming ? (
+            <button
+              onClick={onStop}
+              style={{ ...chatS.sendBtn, background: 'var(--error)' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+            </button>
+          ) : (
+            <button
+              onClick={handleSubmit}
+              style={{
+                ...chatS.sendBtn,
+                opacity: text.trim() ? 1 : 0.4,
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2" fill="none"/></svg>
+            </button>
+          )}
+        </div>
+      </div>
+      <div style={chatS.inputFooter}>
+        <span>Drop files to upload · ⌘K for commands</span>
+      </div>
+    </div>
+  );
+}
+
+/* ── Chat view (messages + input) ── */
+function ChatView({ messages, onSend, isStreaming, onStop, showEmpty }) {
+  const scrollRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  return (
+    <div style={chatS.chatRoot}>
+      <div ref={scrollRef} style={chatS.messagesScroll}>
+        {showEmpty ? (
+          <EmptyState />
+        ) : (
+          <div style={chatS.messagesInner}>
+            {messages.map((msg, i) => (
+              <MessageBubble key={i} msg={msg} isLast={i === messages.length - 1} />
+            ))}
+          </div>
+        )}
+      </div>
+      <ChatInput onSend={onSend} isStreaming={isStreaming} onStop={onStop} />
+    </div>
+  );
+}
+
+/* ── Styles ── */
+const chatS = {
+  chatRoot: { flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100%' },
+  messagesScroll: { flex: 1, overflowY: 'auto', overflowX: 'hidden' },
+  messagesInner: { maxWidth: 780, margin: '0 auto', padding: '20px 24px 16px', display: 'flex', flexDirection: 'column', gap: 4 },
+  msgRow: { display: 'flex', gap: 12, alignItems: 'flex-start', padding: '10px 0' },
+  avatar: {
+    width: 30, height: 30, borderRadius: 'var(--radius)', flexShrink: 0,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: 13, fontWeight: 700, color: '#fff', marginTop: 2,
+  },
+  msgBubble: {
+    padding: '12px 16px', borderRadius: 'var(--radius-lg)',
+    fontSize: 14, lineHeight: 1.7, minWidth: 0,
+  },
+  msgModelTag: {
+    display: 'flex', alignItems: 'center', gap: 6,
+    fontSize: 11, color: 'var(--text-2)', marginBottom: 8,
+    fontFamily: 'var(--font-mono)',
+  },
+  msgActions: {
+    display: 'flex', gap: 2, marginTop: 8, paddingTop: 6,
+    borderTop: '1px solid var(--border)',
+  },
+  msgActionBtn: {
+    padding: '4px 8px', borderRadius: 6, fontSize: 14,
+    color: 'var(--text-3)', cursor: 'pointer',
+    transition: 'all .12s', background: 'transparent', border: 'none',
+  },
+  prose: { color: 'var(--text-1)', fontSize: 14, lineHeight: 1.75 },
+  heading: {
+    fontFamily: 'var(--font-heading)', fontWeight: 'var(--fw-heading)',
+    fontSize: 16, color: 'var(--text-0)', margin: '16px 0 8px',
+  },
+  subheading: {
+    fontFamily: 'var(--font-heading)', fontWeight: 'var(--fw-heading)',
+    fontSize: 14, color: 'var(--text-0)', margin: '14px 0 6px',
+  },
+  paragraph: { marginBottom: 10 },
+  list: { paddingLeft: 20, marginBottom: 10 },
+  listItem: { marginBottom: 4 },
+  inlineCode: {
+    background: 'var(--bg-4)', color: 'var(--accent)',
+    padding: '2px 6px', borderRadius: 4, fontSize: '0.88em',
+    fontFamily: 'var(--font-mono)', border: '1px solid var(--border)',
+  },
+  codeBlock: {
+    borderRadius: 'var(--radius)', overflow: 'hidden',
+    border: '1px solid var(--border)', margin: '10px 0',
+    background: 'var(--bg-1)',
+  },
+  codeHeader: {
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    padding: '6px 12px', borderBottom: '1px solid var(--border)',
+    background: 'var(--bg-2)',
+  },
+  copyBtn: {
+    padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 500,
+    border: '1px solid var(--border-2)', background: 'var(--bg-3)',
+    color: 'var(--text-2)', cursor: 'pointer',
+  },
+  codePre: {
+    padding: '12px 16px', fontSize: 12.5, lineHeight: 1.6,
+    fontFamily: 'var(--font-mono)', overflowX: 'auto',
+    color: 'var(--text-1)', margin: 0,
+  },
+  emptyRoot: {
+    display: 'flex', flexDirection: 'column', alignItems: 'center',
+    justifyContent: 'center', height: '100%', padding: 40, textAlign: 'center',
+  },
+  emptyLogo: {
+    width: 64, height: 64, borderRadius: 'var(--radius-lg)',
+    background: 'var(--accent)', display: 'flex',
+    alignItems: 'center', justifyContent: 'center',
+    fontSize: 28, fontWeight: 800, color: '#fff', marginBottom: 20,
+    fontFamily: 'var(--font-heading)',
+  },
+  emptyTitle: {
+    fontFamily: 'var(--font-heading)', fontWeight: 'var(--fw-heading)',
+    fontSize: 26, color: 'var(--text-0)', marginBottom: 8,
+    letterSpacing: '-0.02em',
+  },
+  emptySubtitle: { fontSize: 14, color: 'var(--text-2)', marginBottom: 32 },
+  hintGrid: {
+    display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)',
+    gap: 10, maxWidth: 400, width: '100%',
+  },
+  hintCard: {
+    display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8,
+    padding: '16px', borderRadius: 'var(--radius-lg)',
+    background: 'var(--bg-2)', border: '1px solid var(--border)',
+    cursor: 'pointer', transition: 'all .15s', textAlign: 'left',
+  },
+  inputWrapper: { padding: '0 24px 16px', maxWidth: 780, margin: '0 auto', width: '100%' },
+  inputBox: {
+    borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)',
+    background: 'var(--input-bg)', transition: 'all .2s',
+    padding: '10px 14px',
+  },
+  inputRow: { display: 'flex', alignItems: 'flex-end', gap: 8 },
+  textarea: {
+    flex: 1, background: 'transparent', border: 'none',
+    resize: 'none', fontSize: 14, lineHeight: 1.5,
+    color: 'var(--text-0)', fontFamily: 'var(--font-body)',
+    minHeight: 24, maxHeight: 160, outline: 'none',
+  },
+  attachBtn: {
+    width: 34, height: 34, borderRadius: 'var(--radius)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    cursor: 'pointer', flexShrink: 0, background: 'transparent', border: 'none',
+  },
+  voiceBtn: {
+    width: 34, height: 34, borderRadius: 'var(--radius)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    cursor: 'pointer', flexShrink: 0, background: 'transparent', border: 'none',
+  },
+  sendBtn: {
+    width: 34, height: 34, borderRadius: 'var(--radius)',
+    background: 'var(--accent)', display: 'flex',
+    alignItems: 'center', justifyContent: 'center',
+    cursor: 'pointer', flexShrink: 0, transition: 'all .15s', border: 'none',
+  },
+  inputFooter: {
+    textAlign: 'center', fontSize: 11, color: 'var(--text-3)',
+    marginTop: 8, fontFamily: 'var(--font-mono)',
+  },
+};
+
+Object.assign(window, { ChatView, EmptyState, ChatInput, MessageBubble });
+
+</script>
+<script type="text/babel">
+/* ═══════════════════════════════════════════
+   REEM APP — Shell, theme switcher, topbar,
+   model picker, command palette, overlays
+   ═══════════════════════════════════════════ */
+
+/* ── Theme Switcher Bar ── */
+function ThemeSwitcher({ current, onChange }) {
+  return (
+    <div style={appS.themeSwitcher}>
+      <span style={appS.themeSwitcherLabel}>Design Direction</span>
+      <div style={appS.themeOptions}>
+        {THEMES.map(t => (
+          <button
+            key={t.id}
+            onClick={() => onChange(t.id)}
+            style={{
+              ...appS.themeCard,
+              borderColor: current === t.id ? t.preview[1] : 'var(--border)',
+              boxShadow: current === t.id ? `0 0 0 1px ${t.preview[1]}40` : 'none',
+            }}
+            onMouseEnter={e => { if (current !== t.id) e.currentTarget.style.borderColor = 'var(--border-3)'; }}
+            onMouseLeave={e => { if (current !== t.id) e.currentTarget.style.borderColor = 'var(--border)'; }}
+          >
+            <div style={{ display: 'flex', gap: 3, marginBottom: 6 }}>
+              {t.preview.map((c, i) => (
+                <div key={i} style={{ width: 14, height: 14, borderRadius: 4, background: c, border: '1px solid rgba(255,255,255,0.1)' }} />
+              ))}
+            </div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: current === t.id ? 'var(--text-0)' : 'var(--text-1)' }}>{t.name}</div>
+            <div style={{ fontSize: 10, color: 'var(--text-3)' }}>{t.desc}</div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Model Picker Dropdown ── */
+function ModelPicker({ selectedModel, selectedProvider, onSelect, isOpen, onToggle }) {
+  const [search, setSearch] = React.useState('');
+  const providerData = PROVIDERS.find(p => p.id === selectedProvider);
+
+  const filtered = PROVIDERS.filter(p =>
+    p.name.toLowerCase().includes(search.toLowerCase()) ||
+    p.models.some(m => m.toLowerCase().includes(search.toLowerCase()))
+  );
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <button onClick={onToggle} style={appS.modelBtn}>
+        <span style={{
+          width: 8, height: 8, borderRadius: '50%',
+          background: providerData?.color || 'var(--accent)',
+        }}></span>
+        <span style={{ fontWeight: 500, fontSize: 13 }}>{selectedModel}</span>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" strokeWidth="3" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+
+      {isOpen && (
+        <React.Fragment>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 98 }} onClick={onToggle} />
+          <div className="glass-panel fade-in" style={appS.modelDropdown}>
+            <input
+              style={appS.modelSearch}
+              placeholder="Search models..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              autoFocus
+            />
+            <div style={{ maxHeight: 320, overflowY: 'auto' }}>
+              {filtered.map(provider => (
+                <div key={provider.id}>
+                  <div style={appS.providerHeader}>
+                    <span style={{
+                      width: 8, height: 8, borderRadius: '50%',
+                      background: provider.color,
+                    }}></span>
+                    <span>{provider.name}</span>
+                  </div>
+                  {provider.models
+                    .filter(m => m.toLowerCase().includes(search.toLowerCase()) || !search)
+                    .map(model => (
+                    <button
+                      key={model}
+                      style={{
+                        ...appS.modelOption,
+                        background: selectedModel === model ? 'var(--accent-dim)' : 'transparent',
+                      }}
+                      onClick={() => { onSelect(provider.id, model); onToggle(); setSearch(''); }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-3)'}
+                      onMouseLeave={e => e.currentTarget.style.background = selectedModel === model ? 'var(--accent-dim)' : 'transparent'}
+                    >
+                      {model}
+                      {selectedModel === model && <span style={{ marginLeft: 'auto', color: 'var(--accent)', fontSize: 14 }}>✓</span>}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </React.Fragment>
+      )}
+    </div>
+  );
+}
+
+/* ── Command Palette ── */
+function CommandPalette({ isOpen, onClose, onAction }) {
+  const [search, setSearch] = React.useState('');
+
+  React.useEffect(() => {
+    if (isOpen) setSearch('');
+  }, [isOpen]);
+
+  const filtered = COMMAND_ITEMS.filter(c =>
+    c.label.toLowerCase().includes(search.toLowerCase())
+  );
+
+  if (!isOpen) return null;
+  return (
+    <React.Fragment>
+      <div style={appS.paletteOverlay} onClick={onClose} />
+      <div className="glass-panel fade-in" style={appS.paletteBox}>
+        <input
+          style={appS.paletteInput}
+          placeholder="Type a command..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          autoFocus
+          onKeyDown={e => { if (e.key === 'Escape') onClose(); }}
+        />
+        <div style={{ maxHeight: 320, overflowY: 'auto' }}>
+          {filtered.map((cmd, i) => (
+            <button
+              key={i}
+              style={appS.paletteItem}
+              onClick={() => { onAction(cmd.action); onClose(); }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-3)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
+              <span style={{ fontSize: 16, width: 28, textAlign: 'center', color: 'var(--accent)' }}>{cmd.icon}</span>
+              <span style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{cmd.label}</span>
+              <span style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>{cmd.shortcut}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </React.Fragment>
+  );
+}
+
+/* ── System Prompt Modal ── */
+function SystemPromptModal({ isOpen, onClose, value, onChange }) {
+  if (!isOpen) return null;
+  return (
+    <React.Fragment>
+      <div style={appS.paletteOverlay} onClick={onClose} />
+      <div className="glass-panel fade-in" style={{ ...appS.paletteBox, width: 520 }}>
+        <div style={{ padding: '16px 20px 12px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 'var(--fw-heading)', fontSize: 15 }}>System Prompt</span>
+          <button onClick={onClose} style={{ fontSize: 18, color: 'var(--text-3)' }}>✕</button>
+        </div>
+        <div style={{ padding: '12px 20px' }}>
+          <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+            {SYSTEM_PROMPTS.map((sp, i) => (
+              <button
+                key={i}
+                onClick={() => onChange(sp.prompt)}
+                style={{
+                  padding: '5px 12px', borderRadius: 'var(--radius)', fontSize: 12,
+                  border: '1px solid var(--border)', background: value === sp.prompt ? 'var(--accent-dim)' : 'var(--bg-2)',
+                  color: value === sp.prompt ? 'var(--accent)' : 'var(--text-2)',
+                  fontWeight: 500, cursor: 'pointer',
+                }}
+              >{sp.name}</button>
+            ))}
+          </div>
+          <textarea
+            style={{
+              width: '100%', minHeight: 120, padding: 12, borderRadius: 'var(--radius)',
+              background: 'var(--bg-2)', border: '1px solid var(--border)', color: 'var(--text-0)',
+              fontSize: 13, lineHeight: 1.6, fontFamily: 'var(--font-body)', resize: 'vertical',
+            }}
+            value={value}
+            onChange={e => onChange(e.target.value)}
+          />
+        </div>
+        <div style={{ padding: '8px 20px 16px', display: 'flex', justifyContent: 'flex-end' }}>
+          <button onClick={onClose} style={{
+            padding: '8px 20px', borderRadius: 'var(--radius)',
+            background: 'var(--accent)', color: '#fff', fontSize: 13,
+            fontWeight: 600, cursor: 'pointer',
+          }}>Apply</button>
+        </div>
+      </div>
+    </React.Fragment>
+  );
+}
+
+/* ── Top Bar ── */
+function TopBar({ model, provider, onModelSelect, onMenuClick, isMobile, mode, onToggleMode }) {
+  const [modelOpen, setModelOpen] = React.useState(false);
+
+  return (
+    <div className="glass-panel" style={appS.topBar}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {isMobile && (
+          <button onClick={onMenuClick} style={appS.menuBtn}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-1)" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+        )}
+        <ModelPicker
+          selectedModel={model}
+          selectedProvider={provider}
+          onSelect={onModelSelect}
+          isOpen={modelOpen}
+          onToggle={() => setModelOpen(!modelOpen)}
+        />
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <button
+          onClick={onToggleMode}
+          style={appS.iconBtn}
+          title={mode === 'dark' ? 'Switch to light' : 'Switch to dark'}
+        >
+          {mode === 'dark' ? '☀' : '☾'}
+        </button>
+        <button style={appS.iconBtn} title="Provider stats">⬡</button>
+        <div style={appS.statusPill}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--success)' }}></span>
+          <span>Connected</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   MAIN APP
+   ═══════════════════════════════════════════ */
+function App() {
+  const [theme, setTheme] = React.useState('sovereign');
+  const [mode, setMode] = React.useState('dark');
+  const [activeChat, setActiveChat] = React.useState('c1');
+  const [messages, setMessages] = React.useState(SAMPLE_MESSAGES);
+  const [showEmpty, setShowEmpty] = React.useState(false);
+  const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  const [cmdOpen, setCmdOpen] = React.useState(false);
+  const [sysPromptOpen, setSysPromptOpen] = React.useState(false);
+  const [systemPrompt, setSystemPrompt] = React.useState(SYSTEM_PROMPTS[0].prompt);
+  const [model, setModel] = React.useState('claude-sonnet-4');
+  const [provider, setProvider] = React.useState('claude');
+  const [isStreaming, setIsStreaming] = React.useState(false);
+  const [isMobile, setIsMobile] = React.useState(window.innerWidth < 768);
+
+  React.useEffect(() => {
+    const fn = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', fn);
+    return () => window.removeEventListener('resize', fn);
+  }, []);
+
+  React.useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
+  React.useEffect(() => {
+    document.documentElement.setAttribute('data-mode', mode);
+  }, [mode]);
+
+  React.useEffect(() => {
+    const handler = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault(); setCmdOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  const handleSend = (text) => {
+    const userMsg = { role: 'user', content: text };
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
+    setShowEmpty(false);
+    setIsStreaming(true);
+
+    setTimeout(() => {
+      const aiMsg = {
+        role: 'assistant',
+        content: `I'll help you with that. Here's my analysis:\n\n**Key Points:**\n- The approach you're describing is solid\n- Consider adding error boundaries for resilience\n- I'd recommend implementing \`retry logic\` with exponential backoff\n\nWould you like me to elaborate on any of these points?`,
+        model, provider,
+        tokens: Math.floor(Math.random() * 200) + 100,
+        time: (Math.random() * 2 + 0.5).toFixed(1) + 's',
+      };
+      setMessages(prev => [...prev, aiMsg]);
+      setIsStreaming(false);
+    }, 1800);
+  };
+
+  const handleNewChat = () => {
+    setMessages([]);
+    setShowEmpty(true);
+    setActiveChat(null);
+  };
+
+  const handleSelectChat = (id) => {
+    setActiveChat(id);
+    setMessages(SAMPLE_MESSAGES);
+    setShowEmpty(false);
+  };
+
+  const handleCommandAction = (action) => {
+    switch (action) {
+      case 'new-chat': handleNewChat(); break;
+      case 'system-prompt': setSysPromptOpen(true); break;
+      case 'theme': setMode(m => m === 'dark' ? 'light' : 'dark'); break;
+      default: break;
+    }
+  };
+
+  return (
+    <div style={appS.root}>
+      {/* Theme Switcher */}
+      <ThemeSwitcher current={theme} onChange={setTheme} />
+
+      {/* App Layout */}
+      <div style={appS.appLayout}>
+        <Sidebar
+          activeChat={activeChat}
+          onSelectChat={handleSelectChat}
+          onNewChat={handleNewChat}
+          onDeleteChat={(id) => { if (id === activeChat) handleNewChat(); }}
+          sidebarOpen={sidebarOpen}
+          onCloseSidebar={() => setSidebarOpen(false)}
+          isMobile={isMobile}
+        />
+        <div style={appS.mainArea}>
+          <TopBar
+            model={model}
+            provider={provider}
+            onModelSelect={(p, m) => { setProvider(p); setModel(m); }}
+            onMenuClick={() => setSidebarOpen(true)}
+            isMobile={isMobile}
+            mode={mode}
+            onToggleMode={() => setMode(m => m === 'dark' ? 'light' : 'dark')}
+          />
+          <ChatView
+            messages={messages}
+            onSend={handleSend}
+            isStreaming={isStreaming}
+            onStop={() => setIsStreaming(false)}
+            showEmpty={showEmpty}
+          />
+        </div>
+      </div>
+
+      {/* Overlays */}
+      <CommandPalette isOpen={cmdOpen} onClose={() => setCmdOpen(false)} onAction={handleCommandAction} />
+      <SystemPromptModal isOpen={sysPromptOpen} onClose={() => setSysPromptOpen(false)} value={systemPrompt} onChange={setSystemPrompt} />
+    </div>
+  );
+}
+
+/* ── App Styles ── */
+const appS = {
+  root: { height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-0)' },
+  themeSwitcher: {
+    padding: '10px 20px', background: 'var(--bg-1)',
+    borderBottom: '1px solid var(--border)',
+    display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0,
+    overflowX: 'auto',
+  },
+  themeSwitcherLabel: {
+    fontSize: 11, fontWeight: 600, color: 'var(--text-3)',
+    textTransform: 'uppercase', letterSpacing: '0.08em',
+    fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap', flexShrink: 0,
+  },
+  themeOptions: { display: 'flex', gap: 8 },
+  themeCard: {
+    padding: '10px 16px', borderRadius: 'var(--radius)',
+    border: '1px solid var(--border)', background: 'var(--bg-2)',
+    cursor: 'pointer', transition: 'all .15s', textAlign: 'left',
+    minWidth: 120, flexShrink: 0,
+  },
+  appLayout: { flex: 1, display: 'flex', overflow: 'hidden' },
+  mainArea: { flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: 'var(--bg-0)' },
+  topBar: {
+    height: 52, flexShrink: 0, display: 'flex', alignItems: 'center',
+    justifyContent: 'space-between', padding: '0 16px',
+    borderBottom: '1px solid var(--border)', background: 'var(--bg-1)',
+  },
+  menuBtn: {
+    width: 36, height: 36, borderRadius: 'var(--radius)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    cursor: 'pointer', background: 'transparent', border: 'none',
+  },
+  modelBtn: {
+    display: 'flex', alignItems: 'center', gap: 8,
+    padding: '6px 14px', borderRadius: 'var(--radius)',
+    border: '1px solid var(--border)', background: 'var(--bg-2)',
+    cursor: 'pointer', transition: 'all .12s',
+  },
+  modelDropdown: {
+    position: 'absolute', top: '100%', left: 0, marginTop: 6,
+    width: 300, background: 'var(--bg-1)', border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow)',
+    zIndex: 99, overflow: 'hidden',
+  },
+  modelSearch: {
+    width: '100%', padding: '12px 16px', border: 'none',
+    borderBottom: '1px solid var(--border)', background: 'transparent',
+    fontSize: 13, color: 'var(--text-0)', outline: 'none',
+  },
+  providerHeader: {
+    display: 'flex', alignItems: 'center', gap: 8,
+    padding: '8px 16px 4px', fontSize: 11, fontWeight: 600,
+    color: 'var(--text-2)', letterSpacing: '0.04em',
+    textTransform: 'uppercase',
+  },
+  modelOption: {
+    width: '100%', padding: '8px 16px 8px 32px', display: 'flex',
+    alignItems: 'center', fontSize: 13, color: 'var(--text-1)',
+    cursor: 'pointer', transition: 'background .1s', textAlign: 'left',
+    border: 'none',
+  },
+  iconBtn: {
+    width: 34, height: 34, borderRadius: 'var(--radius)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: 16, color: 'var(--text-2)', cursor: 'pointer',
+    transition: 'all .12s', background: 'transparent', border: 'none',
+  },
+  statusPill: {
+    display: 'flex', alignItems: 'center', gap: 6,
+    padding: '5px 12px', borderRadius: 999,
+    border: '1px solid var(--border)', fontSize: 11,
+    color: 'var(--text-2)', fontFamily: 'var(--font-mono)',
+  },
+  paletteOverlay: {
+    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+    backdropFilter: 'blur(4px)', zIndex: 199,
+  },
+  paletteBox: {
+    position: 'fixed', top: '18%', left: '50%', transform: 'translateX(-50%)',
+    width: 480, maxWidth: 'calc(100vw - 32px)', background: 'var(--bg-1)',
+    border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)',
+    boxShadow: 'var(--shadow)', zIndex: 200, overflow: 'hidden',
+  },
+  paletteInput: {
+    width: '100%', padding: '14px 20px', border: 'none',
+    borderBottom: '1px solid var(--border)', background: 'transparent',
+    fontSize: 15, color: 'var(--text-0)', outline: 'none',
+    fontFamily: 'var(--font-body)',
+  },
+  paletteItem: {
+    width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+    padding: '10px 16px', cursor: 'pointer',
+    transition: 'background .1s', color: 'var(--text-1)',
+    background: 'transparent', border: 'none', textAlign: 'left',
+  },
+};
+
+/* ── Mount ── */
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+
+</script>
+</body>
+</html>
