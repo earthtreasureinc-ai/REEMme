@@ -197,6 +197,19 @@ async function getDeepSeekModels() {
   return DEEPSEEK_MODELS.map(m => ({ ...m, provider: 'deepseek' }))
 }
 
+async function getClaudeModels() {
+  const key = process.env.CLAUDE_1 || process.env.CLAUDE_2 || process.env.CLAUDE_3
+  if (!key) return []
+  // Static list — Anthropic doesn't have a public models list endpoint
+  return [
+    { id: 'claude-opus-4-7', name: 'Claude Opus 4.7', provider: 'claude', context_length: 200000 },
+    { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6', provider: 'claude', context_length: 200000 },
+    { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5', provider: 'claude', context_length: 200000 },
+    { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', provider: 'claude', context_length: 200000 },
+    { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku', provider: 'claude', context_length: 200000 },
+  ]
+}
+
 export async function GET() {
   try {
     // Fetch all providers in parallel
@@ -211,6 +224,7 @@ export async function GET() {
       getHuggingFaceModels(),
       getOpenAIModels(),
       getDeepSeekModels(),
+      getClaudeModels(),
     ])
 
     const models = results

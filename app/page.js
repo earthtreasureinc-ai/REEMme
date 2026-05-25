@@ -13,12 +13,14 @@ const PROVIDER_COLORS = {
   huggingface: '#fbbf24',
   openai: '#10a37f',
   deepseek: '#6366f1',
+  claude: '#d97706',
 }
 
 const PROVIDER_LABELS = {
   groq: 'Groq', openrouter: 'OpenRouter', gemini: 'Gemini',
   fireworks: 'Fireworks', cerebras: 'Cerebras', nvidia: 'NVIDIA',
   mistral: 'Mistral', huggingface: 'HuggingFace', openai: 'OpenAI', deepseek: 'DeepSeek',
+  claude: 'Claude',
 }
 
 function timeAgo(ts) {
@@ -51,6 +53,10 @@ export default function REEMme() {
   const [systemPrompt, setSystemPrompt] = useState('You are REEMme, a powerful AI assistant with access to multiple AI models, GitHub repositories, and various APIs. Be concise, helpful, and technical when needed.')
   const [showSettings, setShowSettings] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [isSpeaking, setIsSpeaking] = useState(false)
+  const [imagePrompt, setImagePrompt] = useState('')
+  const [generatingImage, setGeneratingImage] = useState(false)
+  const [webSearch, setWebSearch] = useState(false)
 
   const bottomRef = useRef(null)
   const textareaRef = useRef(null)
@@ -151,11 +157,23 @@ export default function REEMme() {
     abortRef.current = controller
 
     try {
-      const msgsToSend = systemPrompt
-        ? [{ role: 'system', content: systemPrompt }, ...newMessages]
-        : newMessages
+      let finalMessages = activeChat.messages
+      if (webSearch && input.trim()) {
+        try {
+          const sr = await fetch('/api/search', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ query: input }) })
+          const sd = await sr.json()
+          if (sd.results?.length > 0) {
+            const searchContext = sd.results.map(r => `[${r.title}](${r.url}): ${r.text?.slice(0,300)}`).join('\n\n')
+            finalMessages = [...activeChat.messages, { role: 'user', content: `Web search results for "${input}":\n\n${searchContext}\n\nUser question: ${input}` }]
+          }
+        } catch {}
+      }
 
-      const res = await fetch('/api/chat', {
+      const msgsToSend = systemPrompt
+        ? [{ role: 'system', content: systemPrompt }, ...(webSearch && finalMessages !== activeChat.messages ? finalMessages : newMessages)]
+        : (webSearch && finalMessages !== activeChat.messages ? finalMessages : newMessages)
+
+      const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
@@ -166,12 +184,14 @@ export default function REEMme() {
         }),
       })
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.error || `HTTP ${res.status}`)
+      const providerUsed = response.headers.get('X-Provider-Used') || selectedModel.provider
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}))
+        throw new Error(err.error || `HTTP ${response.status}`)
       }
 
-      const reader = res.body.getReader()
+      const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let fullContent = ''
       let buffer = ''
@@ -193,7 +213,7 @@ export default function REEMme() {
             fullContent += delta
             updateMessages(chatId, prev => {
               const updated = [...prev]
-              updated[updated.length - 1] = { role: 'assistant', content: fullContent }
+              updated[updated.length - 1] = { role: 'assistant', content: fullContent, providerUsed }
               return updated
             })
           } catch {}
@@ -213,6 +233,48 @@ export default function REEMme() {
   }
 
   const stopStreaming = () => abortRef.current?.abort()
+
+  const speakText = async (text) => {
+    if (isSpeaking) { window.speechSynthesis?.cancel(); setIsSpeaking(false); return; }
+    // Try ElevenLabs first
+    try {
+      const res = await fetch('/api/tts', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ text: text.slice(0, 2000) }) })
+      if (res.ok) {
+        const blob = await res.blob()
+        const url = URL.createObjectURL(blob)
+        const audio = new Audio(url)
+        setIsSpeaking(true)
+        audio.onended = () => { setIsSpeaking(false); URL.revokeObjectURL(url) }
+        audio.play()
+        return
+      }
+    } catch {}
+    // Fallback to Web Speech API
+    if ('speechSynthesis' in window) {
+      const utt = new SpeechSynthesisUtterance(text.slice(0, 2000))
+      utt.rate = 0.9; utt.pitch = 1
+      utt.onend = () => setIsSpeaking(false)
+      setIsSpeaking(true)
+      window.speechSynthesis.speak(utt)
+    }
+  }
+
+  const generateImage = async () => {
+    const prompt = input || imagePrompt
+    if (!prompt) return
+    setGeneratingImage(true)
+    try {
+      const res = await fetch('/api/image', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ prompt }) })
+      const data = await res.json()
+      if (data.image) {
+        const imgMsg = { role: 'assistant', content: `![Generated Image](${data.image})\n\n*Generated via ${data.provider}*` }
+        updateMessages(activeChatId, prev => [...prev, imgMsg])
+      } else {
+        setError('Image generation failed — check STABILITY_AI or REPLICATE keys')
+      }
+    } catch { setError('Image generation error') }
+    setGeneratingImage(false)
+  }
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
@@ -427,6 +489,18 @@ export default function REEMme() {
                           ))}
                         </div>
                       )}
+                      {msg.content && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                          <button onClick={() => speakText(msg.content)} style={{ padding: '2px 8px', fontSize: 11, background: 'var(--bg4)', border: '1px solid var(--border2)', borderRadius: 4, color: isSpeaking ? 'var(--gold)' : 'var(--text3)', cursor: 'pointer' }}>
+                            {isSpeaking ? '🔊 Stop' : '🔊'}
+                          </button>
+                          {msg.providerUsed && (
+                            <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--font-mono)', background: 'var(--bg4)', padding: '2px 6px', borderRadius: 4, border: '1px solid var(--border)' }}>
+                              via {PROVIDER_LABELS[msg.providerUsed] || msg.providerUsed}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.content}</div>
@@ -460,6 +534,12 @@ export default function REEMme() {
               disabled={!selectedModel}
             />
             <div style={S.inputActions}>
+              <button onClick={() => setWebSearch(w => !w)} style={{ padding: '6px 10px', borderRadius: 6, background: webSearch ? 'var(--gold-dim)' : 'var(--bg4)', border: `1px solid ${webSearch ? 'var(--gold)' : 'var(--border2)'}`, color: webSearch ? 'var(--gold)' : 'var(--text3)', fontSize: 11, cursor: 'pointer', marginRight: 4 }} title="Web search">
+                🔍
+              </button>
+              <button onClick={generateImage} disabled={generatingImage || !input} style={{ padding: '6px 10px', borderRadius: 6, background: 'var(--bg4)', border: '1px solid var(--border2)', color: generatingImage ? 'var(--gold)' : 'var(--text3)', fontSize: 11, cursor: 'pointer', marginRight: 4, opacity: input ? 1 : 0.4 }} title="Generate image from prompt">
+                {generatingImage ? '⏳' : '🖼️'}
+              </button>
               {isStreaming ? (
                 <button style={S.stopBtn} onClick={stopStreaming}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
