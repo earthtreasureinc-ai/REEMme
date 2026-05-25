@@ -9,6 +9,10 @@
     "app/api/search/route.js": { "maxDuration": 30 },
     "app/api/tts/route.js": { "maxDuration": 30 },
     "app/api/models/route.js": { "maxDuration": 30 },
-    "app/api/repos/route.js": { "maxDuration": 30 }
+    "app/api/repos/route.js": { "maxDuration": 30 },
+    "app/api/stripe/route.js": { "maxDuration": 20 },
+    "app/api/github/file/route.js": { "maxDuration": 20 },
+    "app/api/hf/route.js": { "maxDuration": 20 },
+    "app/api/supabase/route.js": { "maxDuration": 20 }
   }
 }
