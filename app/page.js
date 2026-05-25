@@ -1,31 +1,26 @@
 'use client'
-import { useState, useRef, useEffect, useCallback } from 'react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
-import { lazy, Suspense } from 'react'
-import ChatSearch from './components/ChatSearch'
-import StatusBar from './components/StatusBar'
-const MermaidDiagram = lazy(() => import('./components/MermaidDiagram'))
-import VoiceInput from './components/VoiceInput'
-import localforage from 'localforage'
-import Fuse from 'fuse.js'
-import { Toaster, toast } from 'sonner'
-import { BarChart, Bar, ResponsiveContainer, Tooltip } from 'recharts'
 
-const PRESET_PROMPTS = [
-  { label: 'Default', value: 'You are REEMme, a powerful AI assistant with access to multiple AI models, GitHub repositories, and various APIs. Be concise, helpful, and technical when needed.' },
-  { label: '💻 Code', value: 'You are an expert software engineer. Write clean, efficient, production-ready code. Explain your reasoning. Use best practices for the target language and framework. Always include error handling.' },
-  { label: '🔬 Research', value: 'You are a research analyst. Provide detailed, accurate, well-structured information. Cite sources when referencing specific facts. Synthesize information across multiple perspectives.' },
-  { label: '✍️ Creative', value: 'You are a creative writing assistant. Help craft compelling narratives, copy, and content. Be imaginative, expressive, and help iterate ideas. Match the tone the user is going for.' },
-  { label: '📊 Business', value: 'You are a senior business analyst at Earth Treasure. Provide strategic insights, market analysis, and data-driven recommendations. Focus on actionable outcomes with clear ROI.' },
-  { label: '🛡️ Security', value: 'You are a cybersecurity expert. Analyze threats, explain vulnerabilities, review code for security issues, and recommend hardening strategies in an educational context.' },
-  { label: '🎨 Design', value: 'You are a UI/UX design consultant. Help with design decisions, component architecture, user flows, accessibility, and visual hierarchy. Reference modern design systems.' },
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import ReactMarkdown from 'react-markdown'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import VoiceInput from './components/VoiceInput'
+
+// ═══════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════
+
+const PRESETS = [
+  { label: 'REEM OS', value: 'You are REEM OS — the sovereign AI operating system of Earth Treasure Global Enterprise. You are precise, strategic, and intelligent. You assist with business intelligence, mineral trade, AI architecture, and executive decision-making. Be concise and authoritative.' },
+  { label: '💻 Engineer', value: 'You are a senior software engineer. Write clean, production-ready code. Include error handling, types, and comments. Explain architecture decisions briefly.' },
+  { label: '🔬 Research', value: 'You are a research analyst. Provide detailed, accurate, well-structured analysis. Synthesize across sources. Flag uncertainties clearly.' },
+  { label: '✍️ Creative', value: 'You are a creative writing collaborator. Help craft compelling narratives, copy, and content. Match the user\'s voice and tone. Iterate with them.' },
+  { label: '📊 Business', value: 'You are a senior business strategist. Provide analysis with clear recommendations and ROI thinking. Be direct and action-oriented.' },
+  { label: '🛡️ Security', value: 'You are a cybersecurity expert. Analyze threats, explain vulnerabilities, and recommend hardening strategies in an educational context.' },
+  { label: '💎 Gemstone', value: 'You are REEM Gemstone Intelligence, specializing in colored gemstone grading, valuation, RWA tokenization, and mineral extraction economics. Apply ETGE Sovereign Ledger frameworks.' },
 ]
 
 const PROVIDER_COLORS = {
-  groq: '#f97316', openrouter: '#8b5cf6', gemini: '#3b82f6',
+  groq: '#f97316', openrouter: '#8b5cf6', gemini: '#4285f4',
   fireworks: '#ec4899', cerebras: '#10b981', nvidia: '#76b900',
   mistral: '#f59e0b', huggingface: '#fbbf24', openai: '#10a37f',
   deepseek: '#6366f1', claude: '#d97706',
@@ -38,378 +33,604 @@ const PROVIDER_LABELS = {
   deepseek: 'DeepSeek', claude: 'Claude',
 }
 
+// Custom code theme — teal palette
+const CODE_THEME = {
+  'code[class*="language-"]': { color: '#c4dac4', background: 'none', fontFamily: '"DM Mono", monospace', fontSize: '0.84rem', lineHeight: '1.65' },
+  'pre[class*="language-"]':  { color: '#c4dac4', background: 'transparent', margin: '0', padding: '0', overflow: 'auto' },
+  '.token.comment':    { color: '#3a6448', fontStyle: 'italic' },
+  '.token.prolog':     { color: '#3a6448' },
+  '.token.doctype':    { color: '#3a6448' },
+  '.token.cdata':      { color: '#3a6448' },
+  '.token.punctuation':{ color: '#527a65' },
+  '.token.property':   { color: '#78bcd4' },
+  '.token.tag':        { color: '#78bcd4' },
+  '.token.boolean':    { color: '#c8861a' },
+  '.token.number':     { color: '#c8861a' },
+  '.token.constant':   { color: '#c8861a' },
+  '.token.symbol':     { color: '#c8861a' },
+  '.token.deleted':    { color: '#e05050' },
+  '.token.selector':   { color: '#88b878' },
+  '.token.attr-name':  { color: '#88b878' },
+  '.token.string':     { color: '#88b878' },
+  '.token.char':       { color: '#88b878' },
+  '.token.builtin':    { color: '#88b878' },
+  '.token.inserted':   { color: '#88b878' },
+  '.token.operator':   { color: '#78bcd4' },
+  '.token.entity':     { color: '#c8861a' },
+  '.token.variable':   { color: '#dde8dd' },
+  '.token.atrule':     { color: '#dfa030' },
+  '.token.attr-value': { color: '#dfa030' },
+  '.token.function':   { color: '#dfa030' },
+  '.token.class-name': { color: '#dfa030' },
+  '.token.keyword':    { color: '#6ab0d4' },
+  '.token.regex':      { color: '#ec8a70' },
+  '.token.important':  { color: '#ec8a70', fontWeight: 'bold' },
+}
+
+// ═══════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════
+
+function useIsMobile() {
+  const [mobile, setMobile] = useState(false)
+  useEffect(() => {
+    const check = () => setMobile(window.innerWidth <= 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+  return mobile
+}
+
 function timeAgo(ts) {
-  const diff = (Date.now() - ts) / 1000
-  if (diff < 60) return 'just now'
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
-  return `${Math.floor(diff / 86400)}d ago`
+  const s = (Date.now() - ts) / 1000
+  if (s < 60)    return 'just now'
+  if (s < 3600)  return `${Math.floor(s / 60)}m ago`
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`
+  return `${Math.floor(s / 86400)}d ago`
 }
 
-function getFirstLine(text) {
-  return text?.split('\n')[0]?.slice(0, 50) || 'New Chat'
+function getTitle(text) {
+  return (text || '').split('\n')[0].slice(0, 52) || 'New Chat'
 }
 
-function formatCurrency(amount, currency = 'usd') {
+function fmtCurrency(amount, currency = 'usd') {
   return new Intl.NumberFormat('en-US', {
-    style: 'currency', currency: currency.toUpperCase(), minimumFractionDigits: 2,
+    style: 'currency', currency: currency.toUpperCase(), minimumFractionDigits: 2
   }).format(amount / 100)
 }
 
+// ═══════════════════════════════════════════════════════
+// SUB-COMPONENTS
+// ═══════════════════════════════════════════════════════
+
+function CodeBlock({ language, value }) {
+  const [copied, setCopied] = useState(false)
+  const lang = (language || 'text').toLowerCase()
+  const lines = (value || '').split('\n').length
+
+  const copy = useCallback(() => {
+    navigator.clipboard?.writeText(value || '').then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }, [value])
+
+  return (
+    <div style={{
+      borderRadius: 'var(--r-lg)',
+      overflow: 'hidden',
+      border: '1px solid var(--border2)',
+      margin: '10px 0',
+      background: 'var(--bg2)',
+    }}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '7px 14px',
+        background: 'var(--bg4)',
+        borderBottom: '1px solid var(--border)',
+      }}>
+        <span style={{
+          fontSize: 10,
+          color: 'var(--text3)',
+          fontFamily: 'var(--font-mono)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.1em',
+          fontWeight: 500,
+        }}>
+          {lang} · {lines} {lines === 1 ? 'line' : 'lines'}
+        </span>
+        <button
+          onClick={copy}
+          style={{
+            fontSize: 11,
+            color: copied ? 'var(--success)' : 'var(--text3)',
+            padding: '2px 9px',
+            borderRadius: 'var(--r-sm)',
+            background: copied ? 'rgba(46,184,122,0.1)' : 'var(--bg5)',
+            border: `1px solid ${copied ? 'rgba(46,184,122,0.3)' : 'var(--border)'}`,
+            transition: 'all 0.18s',
+            fontFamily: 'var(--font-mono)',
+          }}
+        >
+          {copied ? '✓ Copied' : 'Copy'}
+        </button>
+      </div>
+      <SyntaxHighlighter
+        language={lang === 'text' ? 'plaintext' : lang}
+        style={CODE_THEME}
+        customStyle={{
+          margin: 0,
+          padding: '14px 16px',
+          background: 'var(--bg2)',
+          fontSize: '0.84rem',
+          lineHeight: '1.65',
+          maxHeight: '420px',
+          overflowY: 'auto',
+        }}
+        showLineNumbers={lines > 5}
+        lineNumberStyle={{
+          color: 'var(--border3)',
+          fontSize: '0.73rem',
+          paddingRight: '1.2em',
+          userSelect: 'none',
+          minWidth: '2.5em',
+        }}
+        wrapLongLines={false}
+      >
+        {value || ''}
+      </SyntaxHighlighter>
+    </div>
+  )
+}
+
+function ProviderDot({ provider, size = 8 }) {
+  return (
+    <span style={{
+      width: size,
+      height: size,
+      borderRadius: '50%',
+      background: PROVIDER_COLORS[provider] || '#666',
+      display: 'inline-block',
+      flexShrink: 0,
+    }} />
+  )
+}
+
+// ═══════════════════════════════════════════════════════
+// MARKDOWN COMPONENTS
+// ═══════════════════════════════════════════════════════
+
+const MD_COMPONENTS = {
+  code({ children, className }) {
+    const match = /language-(\w+)/.exec(className || '')
+    const value = String(children).replace(/\n$/, '')
+    if (match || value.includes('\n')) {
+      return <CodeBlock language={match ? match[1] : ''} value={value} />
+    }
+    return (
+      <code style={{
+        background: 'var(--bg4)', color: 'var(--gold2)',
+        padding: '2px 6px', borderRadius: 'var(--r-sm)',
+        fontSize: '0.86em', border: '1px solid var(--border2)',
+        fontFamily: 'var(--font-mono)',
+      }}>
+        {children}
+      </code>
+    )
+  },
+}
+
+// ═══════════════════════════════════════════════════════
+// MAIN COMPONENT
+// ═══════════════════════════════════════════════════════
+
 export default function REEMme() {
-  const [chats, setChats] = useState([{ id: '1', title: 'New Chat', messages: [], ts: Date.now() }])
-  const [activeChatId, setActiveChatId] = useState('1')
-  const [input, setInput] = useState('')
-  const [isStreaming, setIsStreaming] = useState(false)
-  const [models, setModels] = useState([])
-  const [selectedModel, setSelectedModel] = useState(null)
-  const [repos, setRepos] = useState([])
-  const [reposLoading, setReposLoading] = useState(false)
-  const [repoSearch, setRepoSearch] = useState('')
-  const [modelsLoading, setModelsLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [sidebarTab, setSidebarTab] = useState('chats')
-  const [modelSearch, setModelSearch] = useState('')
+  const isMobile = useIsMobile()
+
+  // ── Core state ──
+  const [chats,       setChats]       = useState([{ id: '1', title: 'New Chat', messages: [], ts: Date.now() }])
+  const [activeId,    setActiveId]    = useState('1')
+  const [input,       setInput]       = useState('')
+  const [streaming,   setStreaming]   = useState(false)
+  const [error,       setError]       = useState('')
+
+  // ── Models ──
+  const [models,         setModels]         = useState([])
+  const [selectedModel,  setSelectedModel]  = useState(null)
+  const [modelsLoading,  setModelsLoading]  = useState(true)
+  const [modelSearch,    setModelSearch]    = useState('')
   const [providerFilter, setProviderFilter] = useState('all')
-  const [modelDropdownOpen, setModelDropdownOpen] = useState(false)
-  const [systemPrompt, setSystemPrompt] = useState(PRESET_PROMPTS[0].value)
-  const [showSettings, setShowSettings] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [isSpeaking, setIsSpeaking] = useState(false)
-  const [generatingImage, setGeneratingImage] = useState(false)
-  const [webSearch, setWebSearch] = useState(false)
-  // New integrations state
-  const [selectedPreset, setSelectedPreset] = useState('Default')
-  const [stripeData, setStripeData] = useState(null)
+  const [dropdownOpen,   setDropdownOpen]   = useState(false)
+
+  // ── Sidebar & settings ──
+  const [sidebarOpen, setSidebarOpen]   = useState(true)
+  const [sidebarTab,  setSidebarTab]    = useState('chats')
+  const [showSettings,setShowSettings] = useState(false)
+  const [systemPrompt,setSystemPrompt] = useState(PRESETS[0].value)
+  const [activePreset,setActivePreset] = useState('REEM OS')
+
+  // ── Features ──
+  const [webSearch,      setWebSearch]      = useState(false)
+  const [isSpeaking,     setIsSpeaking]     = useState(false)
+  const [generatingImg,  setGeneratingImg]  = useState(false)
+  const [isDragging,     setIsDragging]     = useState(false)
+  const [inputFocused,   setInputFocused]   = useState(false)
+
+  // ── Files ──
+  const [attachedFiles,  setAttachedFiles]  = useState([])
+  const [uploadingFile,  setUploadingFile]  = useState(false)
+
+  // ── Multi-agent ──
+  const [agentMode,      setAgentMode]      = useState(false)
+  const [agentResults,   setAgentResults]   = useState([])
+  const [agentLoading,   setAgentLoading]   = useState(false)
+  const [agentProviders, setAgentProviders] = useState(['groq','gemini','cerebras','fireworks'])
+
+  // ── Integrations ──
+  const [repos,         setRepos]         = useState([])
+  const [reposLoading,  setReposLoading]  = useState(false)
+  const [stripeData,    setStripeData]    = useState(null)
   const [stripeLoading, setStripeLoading] = useState(false)
-  const [hfItems, setHfItems] = useState([])
-  const [hfLoading, setHfLoading] = useState(false)
-  const [hfSearch, setHfSearch] = useState('')
-  const [hfType, setHfType] = useState('models')
-  const [repoFileLoading, setRepoFileLoading] = useState(null)
-  // File upload
-  const [attachedFiles, setAttachedFiles] = useState([])
-  const [uploadingFile, setUploadingFile] = useState(false)
-  const [isDragging, setIsDragging] = useState(false)
-  // Multi-agent mode
-  const [multiAgentMode, setMultiAgentMode] = useState(false)
-  const [multiAgentResults, setMultiAgentResults] = useState([])
-  const [multiAgentLoading, setMultiAgentLoading] = useState(false)
-  const [multiAgentProviders, setMultiAgentProviders] = useState(['groq', 'gemini', 'cerebras', 'fireworks'])
-  // New integrations
-  const [deployData, setDeployData] = useState(null)
-  const [firefliesData, setFirefliesData] = useState(null)
+  const [hfItems,       setHfItems]       = useState([])
+  const [hfLoading,     setHfLoading]     = useState(false)
+  const [hfSearch,      setHfSearch]      = useState('')
+  const [hfType,        setHfType]        = useState('models')
+  const [fireflies,     setFireflies]     = useState(null)
+  const [deployData,    setDeployData]    = useState(null)
+  const [heygenVideo,   setHeygenVideo]   = useState(null)
   const [heygenLoading, setHeygenLoading] = useState(false)
-  const [heygenVideo, setHeygenVideo] = useState(null)
-  const [searchOpen, setSearchOpen] = useState(false)
-  const [editingMsgIdx, setEditingMsgIdx] = useState(null)
-  const [editContent, setEditContent] = useState('')
-  const [securityQuery, setSecurityQuery] = useState('')
-  const [securityType, setSecurityType] = useState('shodan')
-  const [securityResult, setSecurityResult] = useState(null)
-  const [securityLoading, setSecurityLoading] = useState(false)
-  const [makeScenarios, setMakeScenarios] = useState([])
-  const [makeScenariosLoading, setMakeScenariosLoading] = useState(false)
-  const [notionResults, setNotionResults] = useState([])
-  const [notionQuery, setNotionQuery] = useState('')
-  const [notionLoading, setNotionLoading] = useState(false)
-  const [octokitSearch, setOctokitSearch] = useState('')
-  const [octokitResults, setOctokitResults] = useState([])
-  const [octokitLoading, setOctokitLoading] = useState(false)
+  const [repoFileLoading, setRepoFileLoading] = useState(null)
 
-  const bottomRef = useRef(null)
-  const textareaRef = useRef(null)
-  const dropdownRef = useRef(null)
-  const abortRef = useRef(null)
-  const storageLoadedRef = useRef(false)
+  // ── Refs ──
+  const bottomRef    = useRef(null)
+  const textareaRef  = useRef(null)
+  const dropdownRef  = useRef(null)
   const fileInputRef = useRef(null)
+  const abortRef     = useRef(null)
+  const storageInit  = useRef(false)
 
-  const activeChat = chats.find(c => c.id === activeChatId)
-  const messages = activeChat?.messages || []
+  const activeChat = chats.find(c => c.id === activeId)
+  const messages   = activeChat?.messages || []
 
-  useEffect(() => { fetchModels() }, [])
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, isStreaming])
+  // ── Effects ──
+  useEffect(() => { loadModels() }, [])
 
   useEffect(() => {
-    const handleClick = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setModelDropdownOpen(false)
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages.length, streaming])
+
+  useEffect(() => {
+    if (storageInit.current) return
+    storageInit.current = true
+    try {
+      const saved = localStorage.getItem('reem-chats-v2')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed) && parsed.length) {
+          setChats(parsed)
+          setActiveId(parsed[0].id)
+        }
       }
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
+    } catch {}
   }, [])
 
   useEffect(() => {
-    const handler = (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); setModelDropdownOpen(o => !o) }
-      if ((e.metaKey || e.ctrlKey) && e.key === 'n') { e.preventDefault(); newChat() }
-      if ((e.metaKey || e.ctrlKey) && e.key === 'f') { e.preventDefault(); setSearchOpen(o => !o) }
-    }
-    document.addEventListener('keydown', handler)
-    return () => document.removeEventListener('keydown', handler)
-  }, [])
-
-  // Persist chats via localforage (IndexedDB-backed)
-  useEffect(() => {
-    if (storageLoadedRef.current) return
-    storageLoadedRef.current = true
-    localforage.getItem('reemme-chats').then(saved => {
-      if (Array.isArray(saved) && saved.length > 0) {
-        setChats(saved)
-        setActiveChatId(saved[0].id)
-      }
-    }).catch(() => {})
-  }, [])
-
-  useEffect(() => {
-    if (!storageLoadedRef.current) return
-    localforage.setItem('reemme-chats', chats).catch(() => {})
+    if (!storageInit.current) return
+    try { localStorage.setItem('reem-chats-v2', JSON.stringify(chats)) } catch {}
   }, [chats])
 
-  const fetchModels = async () => {
+  useEffect(() => {
+    const fn = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', fn)
+    return () => document.removeEventListener('mousedown', fn)
+  }, [])
+
+  // Close sidebar on mobile when switching chats
+  useEffect(() => {
+    if (isMobile) setSidebarOpen(false)
+  }, [activeId])
+
+  // ── Data fetchers ──
+  async function loadModels() {
     setModelsLoading(true)
     try {
-      const res = await fetch('/api/models')
-      const data = await res.json()
-      const list = data.models || []
-      setModels(list)
-      if (list.length > 0) setSelectedModel(list[0])
-    } catch {
-      toast.error('Could not load models. Check your API keys in Vercel.')
-    } finally {
-      setModelsLoading(false)
-    }
+      const r  = await fetch('/api/models')
+      const d  = await r.json()
+      const ms = d.models || []
+      setModels(ms)
+      if (ms.length) setSelectedModel(ms[0])
+    } catch { setError('Could not load models. Check your API keys.') }
+    finally  { setModelsLoading(false) }
   }
 
-  const fetchRepos = async () => {
-    if (repos.length > 0) return
+  async function loadRepos() {
+    if (repos.length) return
     setReposLoading(true)
     try {
-      const res = await fetch('/api/repos')
-      const data = await res.json()
-      setRepos(data.repos || [])
+      const r = await fetch('/api/repos')
+      const d = await r.json()
+      setRepos(d.repos || [])
     } catch {}
     finally { setReposLoading(false) }
   }
 
-  const fetchStripeData = async () => {
+  async function loadStripe() {
     if (stripeData || stripeLoading) return
     setStripeLoading(true)
     try {
-      const res = await fetch('/api/stripe')
-      const data = await res.json()
-      setStripeData(data)
+      const r = await fetch('/api/stripe')
+      setStripeData(await r.json())
     } catch {}
     finally { setStripeLoading(false) }
   }
 
-  const fetchHfItems = async (search = hfSearch, type = hfType) => {
+  async function loadHf(search = hfSearch, type = hfType) {
     setHfLoading(true)
     try {
-      const res = await fetch(`/api/hf?search=${encodeURIComponent(search)}&type=${type}&limit=12`)
-      const data = await res.json()
-      setHfItems(data.items || [])
+      const r = await fetch(`/api/hf?search=${encodeURIComponent(search)}&type=${type}&limit=12`)
+      const d = await r.json()
+      setHfItems(d.items || [])
     } catch {}
     finally { setHfLoading(false) }
   }
 
-  const loadRepoFile = async (repo, path = 'README.md') => {
+  async function loadRepoFile(repo, path = 'README.md') {
     const key = `${repo.full_name}/${path}`
     setRepoFileLoading(key)
     try {
-      const res = await fetch(`/api/github/file?owner=${repo.owner?.login}&repo=${repo.name}&path=${encodeURIComponent(path)}`)
-      const data = await res.json()
-      if (data.content) {
-        const snippet = data.content.slice(0, 4000)
-        setInput(prev => (prev ? prev + '\n\n' : '') +
-          `Context from **${repo.full_name}** (${path}):\n\`\`\`\n${snippet}${data.content.length > 4000 ? '\n... (truncated)' : ''}\n\`\`\``)
+      const r = await fetch(`/api/github/file?owner=${repo.owner?.login}&repo=${repo.name}&path=${encodeURIComponent(path)}`)
+      const d = await r.json()
+      if (d.content) {
+        const snippet = d.content.slice(0, 4000)
+        setInput(p => (p ? p + '\n\n' : '') +
+          `Context from **${repo.full_name}** (${path}):\n\`\`\`\n${snippet}${d.content.length > 4000 ? '\n…(truncated)' : ''}\n\`\`\``)
         setSidebarTab('chats')
+        if (isMobile) setSidebarOpen(false)
         textareaRef.current?.focus()
       }
     } catch {}
     finally { setRepoFileLoading(null) }
   }
 
-  const handleFileUpload = async (e) => {
-    const file = e.target.files?.[0]
+  // ── Chat management ──
+  const newChat = useCallback(() => {
+    const id = Date.now().toString()
+    setChats(p => [{ id, title: 'New Chat', messages: [], ts: Date.now() }, ...p])
+    setActiveId(id)
+    setInput('')
+    setError('')
+    setAgentResults([])
+    setAttachedFiles([])
+    setHeygenVideo(null)
+  }, [])
+
+  const deleteChat = useCallback((id, e) => {
+    e.stopPropagation()
+    setChats(prev => {
+      const rest = prev.filter(c => c.id !== id)
+      if (activeId === id) {
+        if (rest.length) setActiveId(rest[0].id)
+        else {
+          const nid = Date.now().toString()
+          setTimeout(() => setActiveId(nid), 0)
+          return [{ id: nid, title: 'New Chat', messages: [], ts: Date.now() }]
+        }
+      }
+      return rest.length ? rest : [{ id: Date.now().toString(), title: 'New Chat', messages: [], ts: Date.now() }]
+    })
+  }, [activeId])
+
+  const updateMessages = useCallback((chatId, updater) => {
+    setChats(p => p.map(c =>
+      c.id === chatId
+        ? { ...c, messages: typeof updater === 'function' ? updater(c.messages) : updater }
+        : c
+    ))
+  }, [])
+
+  const setTitle = useCallback((chatId, title) => {
+    setChats(p => p.map(c => c.id === chatId ? { ...c, title } : c))
+  }, [])
+
+  // ── File upload ──
+  async function uploadFile(file) {
     if (!file) return
     setUploadingFile(true)
     try {
       const fd = new FormData()
       fd.append('file', file)
-      const res = await fetch('/api/upload', { method: 'POST', body: fd })
-      const data = await res.json()
-      if (data.content) {
-        setAttachedFiles(prev => [...prev, { name: file.name, content: data.content, isImage: !!data.isImage, pages: data.pages }])
-      } else {
-        setError(data.error || 'File upload failed')
-      }
+      const r = await fetch('/api/upload', { method: 'POST', body: fd })
+      const d = await r.json()
+      if (d.content) {
+        setAttachedFiles(p => [...p, {
+          name: file.name, content: d.content,
+          isImage: !!d.isImage, pages: d.pages,
+        }])
+      } else { setError(d.error || 'Upload failed') }
     } catch (e) { setError(e.message) }
-    finally { setUploadingFile(false); if (fileInputRef.current) fileInputRef.current.value = '' }
+    finally { setUploadingFile(false) }
   }
 
-  const removeAttachment = (i) => setAttachedFiles(prev => prev.filter((_, j) => j !== i))
-
-  const runMultiAgent = async () => {
-    if (!input.trim() && !attachedFiles.length) return
-    setMultiAgentLoading(true)
-    setMultiAgentResults([])
-    try {
-      const content = buildMessageContent()
-      const msgs = systemPrompt
-        ? [{ role: 'system', content: systemPrompt }, { role: 'user', content }]
-        : [{ role: 'user', content }]
-      const res = await fetch('/api/agents', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: msgs, providers: multiAgentProviders }),
-      })
-      const data = await res.json()
-      setMultiAgentResults(data.responses || [])
-    } catch (e) { setError(e.message) }
-    setMultiAgentLoading(false)
-  }
-
-  const buildMessageContent = () => {
+  // ── Build message content ──
+  function buildContent() {
     const parts = []
-    if (attachedFiles.length > 0) {
-      attachedFiles.forEach(f => {
-        if (f.isImage) {
-          parts.push(`[Attached image: ${f.name}]`)
-        } else {
-          parts.push(`--- File: ${f.name} ---\n${f.content.slice(0, 8000)}${f.content.length > 8000 ? '\n...(truncated)' : ''}\n---`)
-        }
-      })
-    }
+    attachedFiles.forEach(f => {
+      if (f.isImage) {
+        parts.push(`[Attached image: ${f.name}]`)
+      } else {
+        parts.push(`--- File: ${f.name} ---\n${f.content.slice(0, 8000)}${f.content.length > 8000 ? '\n…(truncated)' : ''}\n---`)
+      }
+    })
     if (input.trim()) parts.push(input.trim())
     return parts.join('\n\n')
   }
 
-  const generateHeygenVideo = async (text) => {
+  // ── Multi-agent ──
+  async function runAgents() {
+    if (!input.trim() && !attachedFiles.length) return
+    setAgentLoading(true)
+    setAgentResults([])
+    try {
+      const content = buildContent()
+      const msgs = systemPrompt
+        ? [{ role: 'system', content: systemPrompt }, { role: 'user', content }]
+        : [{ role: 'user', content }]
+      const r = await fetch('/api/agents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: msgs, providers: agentProviders }),
+      })
+      const d = await r.json()
+      setAgentResults(d.responses || [])
+    } catch (e) { setError(e.message) }
+    finally { setAgentLoading(false) }
+  }
+
+  // ── Generate image ──
+  async function generateImage() {
+    const prompt = input.trim()
+    if (!prompt) return
+    setGeneratingImg(true)
+    try {
+      const r = await fetch('/api/image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      })
+      const d = await r.json()
+      if (d.image) {
+        updateMessages(activeId, p => [...p, {
+          role: 'assistant',
+          content: `![Generated Image](${d.image})\n\n*Generated via ${d.provider} · Prompt: "${prompt.slice(0, 80)}"*`,
+        }])
+      } else { setError('Image generation failed — check keys') }
+    } catch { setError('Image generation error') }
+    finally { setGeneratingImg(false) }
+  }
+
+  // ── TTS ──
+  async function speakText(text) {
+    if (isSpeaking) { window.speechSynthesis?.cancel(); setIsSpeaking(false); return }
+    try {
+      const r = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text.slice(0, 2000) }),
+      })
+      if (r.ok) {
+        const blob = await r.blob()
+        const url  = URL.createObjectURL(blob)
+        const aud  = new Audio(url)
+        setIsSpeaking(true)
+        aud.onended = () => { setIsSpeaking(false); URL.revokeObjectURL(url) }
+        aud.play()
+        return
+      }
+    } catch {}
+    if ('speechSynthesis' in window) {
+      const u = new SpeechSynthesisUtterance(text.slice(0, 2000))
+      u.rate = 0.9
+      u.onend = () => setIsSpeaking(false)
+      setIsSpeaking(true)
+      window.speechSynthesis.speak(u)
+    }
+  }
+
+  // ── HeyGen ──
+  async function generateVideo(text) {
     setHeygenLoading(true)
     setHeygenVideo(null)
     try {
-      const res = await fetch('/api/heygen', {
+      const r = await fetch('/api/heygen', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: text.slice(0, 1500) }),
       })
-      const data = await res.json()
-      if (data.videoUrl) setHeygenVideo(data.videoUrl)
-      else if (data.videoId) setHeygenVideo({ pending: true, videoId: data.videoId })
-      else setError(data.error || 'HeyGen failed')
+      const d = await r.json()
+      if (d.videoUrl) setHeygenVideo(d.videoUrl)
+      else if (d.videoId) setHeygenVideo({ pending: true, id: d.videoId })
+      else setError(d.error || 'HeyGen failed')
     } catch (e) { setError(e.message) }
-    setHeygenLoading(false)
+    finally { setHeygenLoading(false) }
   }
 
-  const fetchDeployData = async () => {
-    if (deployData) return
-    try {
-      const res = await fetch('/api/deploy')
-      setDeployData(await res.json())
-    } catch {}
-  }
-
-  const fetchFirefliesData = async () => {
-    if (firefliesData) return
-    try {
-      const res = await fetch('/api/fireflies?action=list')
-      setFirefliesData(await res.json())
-    } catch {}
-  }
-
-  const exportChat = () => {
+  // ── Export chat ──
+  function exportChat() {
     if (!messages.length) return
     const title = activeChat?.title || 'Chat'
-    const md = `# ${title}\n\n*Exported from REEMme · ${new Date().toLocaleDateString()}*\n\n` +
+    const md = `# ${title}\n\n*Exported from REEM OS · ${new Date().toLocaleDateString()}*\n\n` +
       messages.map(m => {
-        const label = m.role === 'user' ? 'You' : `${selectedModel?.name || 'AI'}${m.providerUsed ? ` (${PROVIDER_LABELS[m.providerUsed] || m.providerUsed})` : ''}`
-        return `**${label}**\n\n${m.content}`
+        const who = m.role === 'user' ? 'You' : `${selectedModel?.name || 'AI'}${m.providerUsed ? ` [${PROVIDER_LABELS[m.providerUsed] || m.providerUsed}]` : ''}`
+        return `**${who}**\n\n${m.content}`
       }).join('\n\n---\n\n')
-    const blob = new Blob([md], { type: 'text/markdown' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `reemme-${title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.md`
+    const url = URL.createObjectURL(new Blob([md], { type: 'text/markdown' }))
+    const a   = Object.assign(document.createElement('a'), {
+      href: url, download: `reem-${title.replace(/\W+/g, '-').toLowerCase()}.md`
+    })
     a.click()
     URL.revokeObjectURL(url)
   }
 
-  const newChat = () => {
-    const id = Date.now().toString()
-    setChats(prev => [{ id, title: 'New Chat', messages: [], ts: Date.now() }, ...prev])
-    setActiveChatId(id)
-    setError('')
-    setInput('')
-  }
+  // ── Send message ──
+  async function sendMessage() {
+    if ((!input.trim() && !attachedFiles.length) || streaming || !selectedModel) return
+    const chatId  = activeId
+    const content = buildContent()
+    const userMsg = { role: 'user', content }
+    const current = activeChat?.messages || []
+    const updated = [...current, userMsg]
 
-  const deleteChat = (id, e) => {
-    e.stopPropagation()
-    setChats(prev => {
-      const remaining = prev.filter(c => c.id !== id)
-      if (activeChatId === id && remaining.length > 0) setActiveChatId(remaining[0].id)
-      else if (remaining.length === 0) {
-        const nid = Date.now().toString()
-        setTimeout(() => setActiveChatId(nid), 0)
-        return [{ id: nid, title: 'New Chat', messages: [], ts: Date.now() }]
-      }
-      return remaining
-    })
-  }
-
-  const updateMessages = useCallback((chatId, updater) => {
-    setChats(prev => prev.map(c =>
-      c.id === chatId ? { ...c, messages: typeof updater === 'function' ? updater(c.messages) : updater } : c
-    ))
-  }, [])
-
-  const updateChatTitle = useCallback((chatId, title) => {
-    setChats(prev => prev.map(c => c.id === chatId ? { ...c, title } : c))
-  }, [])
-
-  const sendMessage = async () => {
-    if ((!input.trim() && !attachedFiles.length) || isStreaming || !selectedModel) return
-    const chatId = activeChatId
-    const finalContent = buildMessageContent()
-    const userMsg = { role: 'user', content: finalContent }
-    const currentMessages = activeChat?.messages || []
-    const newMessages = [...currentMessages, userMsg]
-    updateMessages(chatId, newMessages)
-    if (currentMessages.length === 0) updateChatTitle(chatId, getFirstLine(finalContent))
+    updateMessages(chatId, updated)
+    if (!current.length) setTitle(chatId, getTitle(content))
     setInput('')
     setAttachedFiles([])
-    setIsStreaming(true)
+    setStreaming(true)
     setError('')
 
-    const placeholderMessages = [...newMessages, { role: 'assistant', content: '' }]
-    updateMessages(chatId, placeholderMessages)
+    updateMessages(chatId, [...updated, { role: 'assistant', content: '' }])
 
     const controller = new AbortController()
     abortRef.current = controller
 
     try {
-      let finalMessages = newMessages
+      let finalMsgs = updated
+
+      // Web search augmentation
       if (webSearch && input.trim()) {
         try {
-          const sr = await fetch('/api/search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: input }) })
+          const sr = await fetch('/api/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: input }),
+          })
           const sd = await sr.json()
-          if (sd.results?.length > 0) {
-            const searchContext = sd.results.map(r => `[${r.title}](${r.url}): ${r.text?.slice(0, 300)}`).join('\n\n')
-            finalMessages = [...currentMessages, { role: 'user', content: `Web search results for "${input}":\n\n${searchContext}\n\nUser question: ${input}` }]
+          if (sd.results?.length) {
+            const ctx = sd.results.map(r => `[${r.title}](${r.url}): ${(r.text || '').slice(0, 280)}`).join('\n\n')
+            finalMsgs = [...current, { role: 'user', content: `Web search results:\n\n${ctx}\n\nQuestion: ${input}` }]
           }
         } catch {}
       }
 
-      const msgsToSend = systemPrompt
-        ? [{ role: 'system', content: systemPrompt }, ...finalMessages]
-        : finalMessages
+      const toSend = systemPrompt
+        ? [{ role: 'system', content: systemPrompt }, ...finalMsgs]
+        : finalMsgs
 
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
-        body: JSON.stringify({ messages: msgsToSend, model: selectedModel.id, provider: selectedModel.provider }),
+        body: JSON.stringify({
+          messages: toSend,
+          model: selectedModel.id,
+          provider: selectedModel.provider,
+        }),
       })
 
       const providerUsed = response.headers.get('X-Provider-Used') || selectedModel.provider
@@ -419,17 +640,17 @@ export default function REEMme() {
         throw new Error(err.error || `HTTP ${response.status}`)
       }
 
-      const reader = response.body.getReader()
+      const reader  = response.body.getReader()
       const decoder = new TextDecoder()
-      let fullContent = ''
-      let buffer = ''
+      let full = ''
+      let buf  = ''
 
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() || ''
+        buf += decoder.decode(value, { stream: true })
+        const lines = buf.split('\n')
+        buf = lines.pop() || ''
 
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue
@@ -437,12 +658,12 @@ export default function REEMme() {
           if (data === '[DONE]') continue
           try {
             const parsed = JSON.parse(data)
-            const delta = parsed.choices?.[0]?.delta?.content || ''
-            fullContent += delta
+            const delta  = parsed.choices?.[0]?.delta?.content || ''
+            full += delta
             updateMessages(chatId, prev => {
-              const updated = [...prev]
-              updated[updated.length - 1] = { role: 'assistant', content: fullContent, providerUsed }
-              return updated
+              const arr = [...prev]
+              arr[arr.length - 1] = { role: 'assistant', content: full, providerUsed }
+              return arr
             })
           } catch {}
         }
@@ -450,950 +671,676 @@ export default function REEMme() {
     } catch (e) {
       if (e.name !== 'AbortError') {
         setError(e.message)
-        updateMessages(chatId, prev => prev.slice(0, -1))
+        updateMessages(chatId, p => p.slice(0, -1))
       }
     } finally {
-      setIsStreaming(false)
+      setStreaming(false)
       abortRef.current = null
     }
   }
 
-  const stopStreaming = () => abortRef.current?.abort()
+  function stopStream() { abortRef.current?.abort() }
 
-  const speakText = async (text) => {
-    if (isSpeaking) { window.speechSynthesis?.cancel(); setIsSpeaking(false); return }
-    try {
-      const res = await fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: text.slice(0, 2000) }) })
-      if (res.ok) {
-        const blob = await res.blob()
-        const url = URL.createObjectURL(blob)
-        const audio = new Audio(url)
-        setIsSpeaking(true)
-        audio.onended = () => { setIsSpeaking(false); URL.revokeObjectURL(url) }
-        audio.play()
-        return
-      }
-    } catch {}
-    if ('speechSynthesis' in window) {
-      const utt = new SpeechSynthesisUtterance(text.slice(0, 2000))
-      utt.rate = 0.9; utt.pitch = 1
-      utt.onend = () => setIsSpeaking(false)
-      setIsSpeaking(true)
-      window.speechSynthesis.speak(utt)
-    }
-  }
-
-  const generateImage = async () => {
-    const prompt = input
-    if (!prompt) return
-    setGeneratingImage(true)
-    try {
-      const res = await fetch('/api/image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) })
-      const data = await res.json()
-      if (data.image) {
-        updateMessages(activeChatId, prev => [...prev, {
-          role: 'assistant',
-          content: `![Generated Image](${data.image})\n\n*Generated via ${data.provider} · Prompt: "${prompt.slice(0, 80)}"*`
-        }])
-      } else {
-        toast.error('Image generation failed — check STABILITY_AI or REPLICATE keys')
-      }
-    } catch { toast.error('Image generation error') }
-    setGeneratingImage(false)
-  }
-
-  const handleKeyDown = (e) => {
+  // ── Input handlers ──
+  function handleKeyDown(e) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
   }
 
-  const autoResize = (e) => {
+  function autoResize(e) {
     e.target.style.height = 'auto'
-    e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px'
+    e.target.style.height = `${Math.min(e.target.scrollHeight, 220)}px`
   }
 
-  const handlePresetChange = (label) => {
-    const preset = PRESET_PROMPTS.find(p => p.label === label)
-    if (preset) { setSystemPrompt(preset.value); setSelectedPreset(label) }
-  }
+  // ── Filtered models ──
+  const filteredModels = useMemo(() =>
+    models.filter(m => {
+      const q = modelSearch.toLowerCase()
+      const matchQ = m.name.toLowerCase().includes(q) || m.provider.toLowerCase().includes(q)
+      const matchP = providerFilter === 'all' || m.provider === providerFilter
+      return matchQ && matchP
+    }),
+    [models, modelSearch, providerFilter]
+  )
 
-  const runSecurityScan = async () => {
-    if (!securityQuery.trim()) return
-    setSecurityLoading(true); setSecurityResult(null)
-    try {
-      const res = await fetch(`/api/security?q=${encodeURIComponent(securityQuery)}&type=${securityType}`)
-      setSecurityResult(await res.json())
-    } catch (e) { toast.error(e.message) }
-    setSecurityLoading(false)
-  }
+  const providers = useMemo(() =>
+    ['all', ...new Set(models.map(m => m.provider))],
+    [models]
+  )
 
-  const fetchMakeScenarios = async () => {
-    if (makeScenarios.length) return
-    setMakeScenariosLoading(true)
-    try {
-      const res = await fetch('/api/make?action=scenarios')
-      const data = await res.json()
-      setMakeScenarios(data.scenarios || [])
-    } catch {}
-    setMakeScenariosLoading(false)
-  }
+  // Grouped models for better dropdown UX
+  const groupedModels = useMemo(() => {
+    const groups = {}
+    filteredModels.forEach(m => {
+      if (!groups[m.provider]) groups[m.provider] = []
+      groups[m.provider].push(m)
+    })
+    return groups
+  }, [filteredModels])
 
-  const runMakeScenario = async (id) => {
-    try {
-      await fetch('/api/make', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scenarioId: id }) })
-      toast.success(`Scenario ${id} triggered`)
-    } catch (e) { toast.error(e.message) }
-  }
-
-  const searchNotion = async () => {
-    if (!notionQuery.trim()) return
-    setNotionLoading(true); setNotionResults([])
-    try {
-      const res = await fetch(`/api/notion?action=search&q=${encodeURIComponent(notionQuery)}`)
-      const data = await res.json()
-      setNotionResults(data.results || [])
-    } catch {}
-    setNotionLoading(false)
-  }
-
-  const searchOctokit = async () => {
-    if (!octokitSearch.trim()) return
-    setOctokitLoading(true); setOctokitResults([])
-    try {
-      const res = await fetch(`/api/octokit?q=${encodeURIComponent(octokitSearch)}&type=repos`)
-      const data = await res.json()
-      setOctokitResults(data.items || [])
-    } catch {}
-    setOctokitLoading(false)
-  }
-
-  const saveEditedMessage = () => {
-    if (editingMsgIdx === null) return
-    updateMessages(activeChatId, prev => prev.map((m, i) => i === editingMsgIdx ? { ...m, content: editContent } : m))
-    setEditingMsgIdx(null); setEditContent('')
-  }
-
-  const filteredModels = (() => {
-    const providerFiltered = providerFilter === 'all' ? models : models.filter(m => m.provider === providerFilter)
-    if (!modelSearch.trim()) return providerFiltered
-    const fuse = new Fuse(providerFiltered, { keys: ['name', 'provider', 'id'], threshold: 0.4 })
-    return fuse.search(modelSearch).map(r => r.item)
-  })()
-
-  const providers = ['all', ...new Set(models.map(m => m.provider))]
+  // ═══════════════════════════════════════════════════
+  // RENDER
+  // ═══════════════════════════════════════════════════
 
   return (
     <div style={S.root}>
-      <Toaster position="top-right" richColors theme="dark" />
-      {/* ── Sidebar ── */}
-      {sidebarOpen && (
-        <aside style={S.sidebar}>
-          <div style={S.sidebarHeader}>
-            <div style={S.logo}>
-              <span style={S.logoIcon}>⬡</span>
-              <span style={S.logoText}>REEMme</span>
-            </div>
-            <button style={S.newChatBtn} onClick={newChat}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              New Chat
-            </button>
-          </div>
-
-          <div style={S.tabRow}>
-            {['chats', 'repos', 'tools', 'hf'].map(tab => (
-              <button
-                key={tab}
-                style={{ ...S.tab, ...(sidebarTab === tab ? S.tabOn : {}) }}
-                onClick={() => {
-                  setSidebarTab(tab)
-                  if (tab === 'repos') fetchRepos()
-                  if (tab === 'tools') fetchStripeData()
-                  if (tab === 'hf') { if (!hfItems.length) fetchHfItems('', 'models') }
-                }}
-              >
-                {tab === 'chats' ? 'Chats' : tab === 'repos' ? 'Repos' : tab === 'tools' ? 'Tools' : 'HF'}
-              </button>
-            ))}
-          </div>
-
-          {/* ── Chats tab ── */}
-          {sidebarTab === 'chats' && (
-            <div style={S.chatList}>
-              {chats.map(chat => (
-                <div
-                  key={chat.id}
-                  style={{ ...S.chatItem, ...(activeChatId === chat.id ? S.chatItemOn : {}) }}
-                  onClick={() => setActiveChatId(chat.id)}
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0, opacity: 0.5 }}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                  <div style={S.chatItemInner}>
-                    <span style={S.chatItemTitle}>{chat.title}</span>
-                    <span style={S.chatItemTime}>{timeAgo(chat.ts)}</span>
-                  </div>
-                  <button style={S.chatDeleteBtn} onClick={(e) => deleteChat(chat.id, e)} className="delete-btn">✕</button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* ── Repos tab ── */}
-          {sidebarTab === 'repos' && (
-            <div style={S.repoList}>
-              <input
-                style={{ ...S.modelSearchInput, margin: '4px 0 6px', width: '100%' }}
-                placeholder="Search repos…"
-                value={repoSearch}
-                onChange={e => setRepoSearch(e.target.value)}
-              />
-              <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
-                <input
-                  style={{ ...S.modelSearchInput, flex: 1, fontSize: 12 }}
-                  placeholder="GitHub global search…"
-                  value={octokitSearch}
-                  onChange={e => setOctokitSearch(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && searchOctokit()}
-                />
-                <button onClick={searchOctokit} disabled={octokitLoading} style={{ padding: '5px 8px', background: 'var(--bg4)', border: '1px solid var(--border)', borderRadius: 5, color: 'var(--text2)', cursor: 'pointer', fontSize: 11 }}>
-                  {octokitLoading ? '⏳' : '🔭'}
-                </button>
-              </div>
-              {octokitResults.length > 0 && (
-                <div style={{ marginBottom: 8 }}>
-                  {octokitResults.slice(0, 5).map((r, i) => (
-                    <a key={i} href={r.url} target="_blank" rel="noreferrer" style={S.repoItem}>
-                      <div style={S.repoName}>{r.name?.split('/').pop()}</div>
-                      <div style={S.repoMeta}>
-                        <span style={S.repoAccount}>{r.name?.split('/')[0]}</span>
-                        {r.stars > 0 && <span style={S.repoLang}>★ {r.stars}</span>}
-                        {r.language && <span style={S.repoLang}>{r.language}</span>}
-                      </div>
-                      {r.description && <div style={S.repoDesc}>{r.description?.slice(0,60)}</div>}
-                    </a>
-                  ))}
-                </div>
-              )}
-              {reposLoading && <div style={S.sidebarEmpty}><div className="spinner" /></div>}
-              {!reposLoading && repos.length === 0 && (
-                <div style={S.sidebarEmpty}>
-                  <p style={{ color: 'var(--text3)', fontSize: 13 }}>No repos found.<br/>Check GitHub tokens.</p>
-                </div>
-              )}
-              {(repoSearch.trim()
-                ? new Fuse(repos, { keys: ['name', 'description', 'language', 'full_name'], threshold: 0.4 }).search(repoSearch).map(r => r.item)
-                : repos
-              ).map(repo => (
-                <div key={repo.full_name} style={S.repoItem}>
-                  <div style={S.repoItemTop}>
-                    <a href={repo.html_url} target="_blank" rel="noreferrer" style={S.repoName}>{repo.name}</a>
-                    <button
-                      style={{ ...S.repoLoadBtn, opacity: repoFileLoading === `${repo.full_name}/README.md` ? 0.5 : 1 }}
-                      onClick={() => loadRepoFile(repo, 'README.md')}
-                      disabled={repoFileLoading === `${repo.full_name}/README.md`}
-                      title="Load README into chat context"
-                    >
-                      {repoFileLoading === `${repo.full_name}/README.md` ? '⏳' : '📄'}
-                    </button>
-                  </div>
-                  <div style={S.repoMeta}>
-                    <span style={S.repoAccount}>{repo.owner?.login}</span>
-                    {repo.private && <span style={S.repoPrivate}>private</span>}
-                    {repo.language && <span style={S.repoLang}>{repo.language}</span>}
-                    {repo.stargazers_count > 0 && <span style={S.repoLang}>★ {repo.stargazers_count}</span>}
-                  </div>
-                  {repo.description && <div style={S.repoDesc}>{repo.description.slice(0, 60)}</div>}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* ── Tools tab ── */}
-          {sidebarTab === 'tools' && (
-            <div style={S.toolsList}>
-              {/* Stripe */}
-              <div style={S.toolSection}>
-                <div style={S.toolSectionHeader}>
-                  <span>💳 Stripe</span>
-                  <span style={{ ...S.toolBadge, background: stripeData && !stripeData.error ? 'var(--green)' : '#555' }}>
-                    {stripeData && !stripeData.error ? 'live' : 'check key'}
-                  </span>
-                </div>
-                {stripeLoading && <div style={{ padding: '8px 10px' }}><div className="spinner" /></div>}
-                {stripeData?.balance && (
-                  <div style={S.toolCard}>
-                    {stripeData.balance.available?.map((b, i) => (
-                      <div key={i} style={S.toolRow}>
-                        <span style={S.toolLabel}>Available ({b.currency.toUpperCase()})</span>
-                        <span style={S.toolValue}>{formatCurrency(b.amount, b.currency)}</span>
-                      </div>
-                    ))}
-                    {stripeData.balance.pending?.map((b, i) => (
-                      <div key={i} style={S.toolRow}>
-                        <span style={S.toolLabel}>Pending ({b.currency.toUpperCase()})</span>
-                        <span style={{ ...S.toolValue, color: 'var(--text3)' }}>{formatCurrency(b.amount, b.currency)}</span>
-                      </div>
-                    ))}
-                    {stripeData.charges?.slice(0, 3).map((c, i) => (
-                      <div key={i} style={S.toolRow}>
-                        <span style={S.toolLabel}>{c.description?.slice(0, 20) || 'Charge'}</span>
-                        <span style={{ ...S.toolValue, color: c.status === 'succeeded' ? 'var(--green)' : 'var(--red)' }}>
-                          {formatCurrency(c.amount, c.currency)}
-                        </span>
-                      </div>
-                    ))}
-                    {stripeData.charges?.length >= 2 && (
-                      <div style={{ padding: '8px 10px 6px' }}>
-                        <ResponsiveContainer width="100%" height={48}>
-                          <BarChart data={stripeData.charges.slice(0, 8).reverse().map((c, i) => ({ i, amount: c.amount / 100 }))}>
-                            <Bar dataKey="amount" fill="var(--gold)" radius={[2,2,0,0]} />
-                            <Tooltip
-                              contentStyle={{ background: 'var(--bg3)', border: '1px solid var(--border)', fontSize: 11 }}
-                              formatter={v => [`$${v.toFixed(2)}`, 'charge']}
-                              labelFormatter={() => ''}
-                            />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                    )}
-                  </div>
-                )}
-                {stripeData?.error && <p style={{ fontSize: 11, color: 'var(--text3)', padding: '4px 10px 8px' }}>Set STRIPE env var to enable</p>}
-              </div>
-
-              {/* Supabase */}
-              <div style={S.toolSection}>
-                <div style={S.toolSectionHeader}>
-                  <span>🗄️ Supabase</span>
-                  <span style={{ ...S.toolBadge, background: 'var(--green)' }}>2 dbs</span>
-                </div>
-                <div style={S.toolCard}>
-                  <div style={S.toolRow}>
-                    <span style={S.toolLabel}>earthtreasureinc</span>
-                    <span style={{ ...S.toolValue, color: 'var(--green)' }}>healthy</span>
-                  </div>
-                  <div style={S.toolRow}>
-                    <span style={S.toolLabel}>REEM.</span>
-                    <span style={{ ...S.toolValue, color: 'var(--green)' }}>healthy</span>
-                  </div>
-                  <div style={S.toolRow}>
-                    <span style={S.toolLabel}>Region</span>
-                    <span style={S.toolValue}>eu-central-1</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* GitHub */}
-              <div style={S.toolSection}>
-                <div style={S.toolSectionHeader}>
-                  <span>🐙 GitHub</span>
-                  <span style={{ ...S.toolBadge, background: 'var(--green)' }}>3 accounts</span>
-                </div>
-                <div style={S.toolCard}>
-                  {[
-                    { label: 'earthtreasureinc-ai', desc: '160+ repos' },
-                    { label: 'ETGE', desc: 'Global Enterprises' },
-                    { label: 'ETI / SL', desc: 'Multi-account' },
-                  ].map((a, i) => (
-                    <div key={i} style={S.toolRow}>
-                      <span style={S.toolLabel}>{a.label}</span>
-                      <span style={S.toolValue}>{a.desc}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Zapier */}
-              <div style={S.toolSection}>
-                <div style={S.toolSectionHeader}>
-                  <span>⚡ Zapier</span>
-                  <span style={{ ...S.toolBadge, background: '#f97316' }}>41 actions</span>
-                </div>
-                <div style={S.toolCard}>
-                  <div style={S.toolRow}><span style={S.toolLabel}>Slack</span><span style={S.toolValue}>35 actions</span></div>
-                  <div style={S.toolRow}><span style={S.toolLabel}>Cursor</span><span style={S.toolValue}>6 actions</span></div>
-                  <div style={S.toolRow}><span style={S.toolLabel}>Status</span><span style={{ ...S.toolValue, color: 'var(--green)' }}>connected</span></div>
-                </div>
-              </div>
-
-              {/* HuggingFace */}
-              <div style={S.toolSection}>
-                <div style={S.toolSectionHeader}>
-                  <span>🤗 HuggingFace</span>
-                  <span style={{ ...S.toolBadge, background: '#fbbf24', color: '#000' }}>authed</span>
-                </div>
-                <div style={S.toolCard}>
-                  <div style={S.toolRow}><span style={S.toolLabel}>Account</span><span style={S.toolValue}>earthtreasureinc</span></div>
-                  <div style={S.toolRow}><span style={S.toolLabel}>Access</span><span style={{ ...S.toolValue, color: 'var(--green)' }}>full inference</span></div>
-                </div>
-              </div>
-
-              {/* Vercel */}
-              <div style={S.toolSection}>
-                <div style={S.toolSectionHeader}>
-                  <span>▲ Vercel</span>
-                  <span style={{ ...S.toolBadge, background: 'var(--text)' , color: 'var(--bg)' }}>deployed</span>
-                </div>
-                <div style={S.toolCard}>
-                  <div style={S.toolRow}><span style={S.toolLabel}>Team</span><span style={S.toolValue}>earthtreasureinc</span></div>
-                  <div style={S.toolRow}><span style={S.toolLabel}>Project</span><span style={S.toolValue}>REEMme</span></div>
-                </div>
-              </div>
-
-              {/* Fireflies */}
-              <div style={S.toolSection}>
-                <div style={S.toolSectionHeader}>
-                  <span>🦗 Fireflies</span>
-                  <button style={{ ...S.toolBadge, background: '#6366f1', cursor: 'pointer', border: 'none' }} onClick={fetchFirefliesData}>
-                    {firefliesData ? `${firefliesData.transcripts?.length || 0} meetings` : 'load'}
-                  </button>
-                </div>
-                {firefliesData?.transcripts?.length > 0 && (
-                  <div style={S.toolCard}>
-                    {firefliesData.transcripts.slice(0, 3).map((t, i) => (
-                      <div key={i} style={S.toolRow}>
-                        <span style={{ ...S.toolLabel, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</span>
-                        <span style={S.toolValue}>{Math.round(t.duration / 60)}m</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {firefliesData?.error && <p style={{ fontSize: 11, color: 'var(--text3)', padding: '4px 10px 8px' }}>Configure FIREFLIES key</p>}
-              </div>
-
-              {/* Deployments */}
-              <div style={S.toolSection}>
-                <div style={S.toolSectionHeader}>
-                  <span>🚀 Deploy</span>
-                  <button style={{ ...S.toolBadge, background: '#8b5cf6', cursor: 'pointer', border: 'none' }} onClick={fetchDeployData}>
-                    {deployData ? 'refresh' : 'load'}
-                  </button>
-                </div>
-                {deployData && (
-                  <div style={S.toolCard}>
-                    {deployData.netlify?.sites?.slice(0, 2).map((s, i) => (
-                      <div key={i} style={S.toolRow}>
-                        <span style={S.toolLabel}>▲ {s.name?.slice(0, 18)}</span>
-                        <span style={{ ...S.toolValue, color: s.buildStatus === 'ready' ? 'var(--green)' : 'var(--text3)' }}>{s.buildStatus || s.state}</span>
-                      </div>
-                    ))}
-                    {deployData.railway?.projects?.slice(0, 2).map((p, i) => (
-                      <div key={i} style={S.toolRow}>
-                        <span style={S.toolLabel}>🚂 {p.name?.slice(0, 18)}</span>
-                        <span style={{ ...S.toolValue, color: 'var(--green)' }}>live</span>
-                      </div>
-                    ))}
-                    {!deployData.netlify?.sites?.length && !deployData.railway?.projects?.length && (
-                      <div style={S.toolRow}><span style={S.toolLabel}>Add NETLIFY + RAILWAY env vars</span></div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Make.com */}
-              <div style={S.toolSection}>
-                <div style={S.toolSectionHeader}>
-                  <span>⚙️ Make.com</span>
-                  <button style={{ ...S.toolBadge, background: '#ec4899', cursor: 'pointer', border: 'none' }} onClick={fetchMakeScenarios}>
-                    {makeScenariosLoading ? '⏳' : makeScenarios.length ? `${makeScenarios.length} scenarios` : 'load'}
-                  </button>
-                </div>
-                {makeScenarios.length > 0 && (
-                  <div style={S.toolCard}>
-                    {makeScenarios.slice(0, 5).map((s, i) => (
-                      <div key={i} style={{ ...S.toolRow, cursor: 'pointer' }} onClick={() => runMakeScenario(s.id)}>
-                        <span style={{ ...S.toolLabel, maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
-                        <span style={{ ...S.toolValue, color: s.isActive ? 'var(--green)' : 'var(--text3)' }}>▶ run</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {!makeScenarios.length && !makeScenariosLoading && (
-                  <div style={S.toolCard}>
-                    <div style={S.toolRow}><span style={S.toolLabel}>Add MAKE_API_KEY</span><span style={S.toolValue}>to activate</span></div>
-                  </div>
-                )}
-              </div>
-
-              {/* HeyGen */}
-              <div style={S.toolSection}>
-                <div style={S.toolSectionHeader}>
-                  <span>🎬 HeyGen</span>
-                  <span style={{ ...S.toolBadge, background: 'var(--green)' }}>connected</span>
-                </div>
-                <div style={S.toolCard}>
-                  <div style={S.toolRow}><span style={S.toolLabel}>Video AI</span><span style={{ ...S.toolValue, color: 'var(--green)' }}>ready</span></div>
-                  <div style={S.toolRow}><span style={S.toolLabel}>Usage</span><span style={S.toolValue}>Click 🎬 on any AI reply</span></div>
-                </div>
-              </div>
-
-              {/* Notion */}
-              <div style={S.toolSection}>
-                <div style={S.toolSectionHeader}>
-                  <span>📝 Notion</span>
-                  <span style={{ ...S.toolBadge, background: '#333' }}>search</span>
-                </div>
-                <div style={{ padding: '4px 4px 6px', display: 'flex', gap: 4 }}>
-                  <input
-                    style={{ ...S.modelSearchInput, flex: 1, fontSize: 12 }}
-                    placeholder="Search Notion pages…"
-                    value={notionQuery}
-                    onChange={e => setNotionQuery(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && searchNotion()}
-                  />
-                  <button onClick={searchNotion} disabled={notionLoading} style={{ padding: '5px 8px', background: '#333', border: '1px solid var(--border)', borderRadius: 5, color: 'var(--text2)', cursor: 'pointer', fontSize: 11 }}>
-                    {notionLoading ? '⏳' : '🔍'}
-                  </button>
-                </div>
-                {notionResults.length > 0 && (
-                  <div style={S.toolCard}>
-                    {notionResults.slice(0, 4).map((p, i) => (
-                      <div key={i} style={{ ...S.toolRow, cursor: 'pointer' }} onClick={() => { setInput(prev => prev + `\n\nNotion page: "${p.title}" (${p.url})`); setSidebarTab('chats') }}>
-                        <span style={{ ...S.toolLabel, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title}</span>
-                        <span style={S.toolValue}>{p.type}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Security */}
-              <div style={S.toolSection}>
-                <div style={S.toolSectionHeader}>
-                  <span>🔒 Security</span>
-                  <span style={{ ...S.toolBadge, background: '#ef4444' }}>3 tools</span>
-                </div>
-                <div style={{ padding: '6px 4px 4px' }}>
-                  <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
-                    {['shodan','virustotal','aiornot'].map(t => (
-                      <button key={t} style={{ ...S.providerChip, ...(securityType === t ? S.providerChipOn : {}), flex: 1, justifyContent: 'center', fontSize: 9 }}
-                        onClick={() => setSecurityType(t)}>{t}</button>
-                    ))}
-                  </div>
-                  <input
-                    style={{ ...S.modelSearchInput, width: '100%', marginBottom: 4, fontSize: 12 }}
-                    placeholder={securityType === 'shodan' ? 'IP or search query…' : securityType === 'virustotal' ? 'URL or hash…' : 'Text to analyze…'}
-                    value={securityQuery}
-                    onChange={e => setSecurityQuery(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && runSecurityScan()}
-                  />
-                  <button
-                    onClick={runSecurityScan}
-                    disabled={securityLoading || !securityQuery.trim()}
-                    style={{ width: '100%', padding: '5px', background: '#ef4444', border: 'none', borderRadius: 5, color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer', opacity: securityQuery.trim() ? 1 : 0.5 }}
-                  >
-                    {securityLoading ? '⏳ Scanning…' : '🔍 Scan'}
-                  </button>
-                </div>
-                {securityResult && !securityResult.error && (
-                  <div style={{ ...S.toolCard, maxHeight: 120, overflowY: 'auto', marginTop: 4 }}>
-                    <pre style={{ fontSize: 10, padding: '6px 8px', color: 'var(--text2)', whiteSpace: 'pre-wrap', wordBreak: 'break-all', margin: 0 }}>
-                      {JSON.stringify(securityResult, null, 2).slice(0, 800)}
-                    </pre>
-                  </div>
-                )}
-                {securityResult?.error && <p style={{ fontSize: 11, color: 'var(--red)', padding: '4px 4px 0' }}>{securityResult.error}</p>}
-              </div>
-
-              {/* AI Providers */}
-              <div style={S.toolSection}>
-                <div style={S.toolSectionHeader}>
-                  <span>🤖 AI Providers</span>
-                  <span style={{ ...S.toolBadge, background: 'var(--gold)', color: '#000' }}>{models.length} models</span>
-                </div>
-                <div style={S.toolCard}>
-                  {Object.entries(PROVIDER_LABELS).map(([key, label]) => {
-                    const count = models.filter(m => m.provider === key).length
-                    return count > 0 ? (
-                      <div key={key} style={S.toolRow}>
-                        <span style={{ ...S.toolLabel, display: 'flex', alignItems: 'center', gap: 5 }}>
-                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: PROVIDER_COLORS[key], display: 'inline-block', flexShrink: 0 }} />
-                          {label}
-                        </span>
-                        <span style={S.toolValue}>{count} models</span>
-                      </div>
-                    ) : null
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ── HuggingFace tab ── */}
-          {sidebarTab === 'hf' && (
-            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-              <div style={{ padding: '8px 8px 4px' }}>
-                <input
-                  style={{ ...S.modelSearchInput, width: '100%', marginBottom: 6 }}
-                  placeholder="Search HuggingFace…"
-                  value={hfSearch}
-                  onChange={e => setHfSearch(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && fetchHfItems(hfSearch, hfType)}
-                />
-                <div style={{ display: 'flex', gap: 4 }}>
-                  {['models', 'spaces', 'datasets'].map(t => (
-                    <button
-                      key={t}
-                      style={{ ...S.providerChip, ...(hfType === t ? S.providerChipOn : {}), flex: 1, justifyContent: 'center' }}
-                      onClick={() => { setHfType(t); fetchHfItems(hfSearch, t) }}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div style={{ flex: 1, overflowY: 'auto', padding: '4px 8px' }}>
-                {hfLoading && <div style={S.sidebarEmpty}><div className="spinner" /></div>}
-                {!hfLoading && hfItems.map(item => (
-                  <a key={item.id} href={item.url} target="_blank" rel="noreferrer" style={S.repoItem}>
-                    <div style={S.repoName}>{item.name?.split('/').pop()}</div>
-                    <div style={S.repoMeta}>
-                      <span style={S.repoAccount}>{item.name?.split('/')[0]}</span>
-                      {item.downloads > 0 && <span style={S.repoLang}>↓{(item.downloads / 1000).toFixed(0)}K</span>}
-                      {item.likes > 0 && <span style={S.repoLang}>♥{item.likes}</span>}
-                    </div>
-                    {item.tags?.length > 0 && (
-                      <div style={S.repoDesc}>{item.tags.filter(Boolean).slice(0, 3).join(' · ')}</div>
-                    )}
-                  </a>
-                ))}
-                {!hfLoading && hfItems.length === 0 && (
-                  <div style={S.sidebarEmpty}>
-                    <p style={{ color: 'var(--text3)', fontSize: 12 }}>Search for {hfType} above</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          <div style={S.sidebarBottom}>
-            <button style={S.settingsBtn} onClick={() => setShowSettings(s => !s)}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-              Settings
-            </button>
-            <div style={S.modelCount}>{models.length} models</div>
-          </div>
-        </aside>
+      {/* Mobile backdrop */}
+      {isMobile && sidebarOpen && (
+        <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />
       )}
 
-      {/* ── Main ── */}
+      {/* ═══ SIDEBAR ═══ */}
+      <aside className={`reem-sidebar${sidebarOpen ? ' sidebar-open' : ''}`}>
+
+        {/* Logo */}
+        <div style={S.logoArea}>
+          <div style={S.logoMark}>⬡</div>
+          <div>
+            <div style={S.logoName}>REEM OS</div>
+            <div style={S.logoSub}>Sovereign AI</div>
+          </div>
+          <button
+            style={S.newChatBtnIcon}
+            onClick={newChat}
+            title="New Chat"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </button>
+        </div>
+
+        {/* Tabs */}
+        <div style={S.tabRow}>
+          {['chats','repos','tools','hf'].map(t => (
+            <button
+              key={t}
+              style={{ ...S.tab, ...(sidebarTab === t ? S.tabOn : {}) }}
+              onClick={() => {
+                setSidebarTab(t)
+                if (t === 'repos' && !repos.length) loadRepos()
+                if (t === 'tools') loadStripe()
+                if (t === 'hf' && !hfItems.length) loadHf('', 'models')
+              }}
+            >
+              {t === 'chats' ? 'Chats' : t === 'repos' ? 'Repos' : t === 'tools' ? 'Tools' : 'HF'}
+            </button>
+          ))}
+        </div>
+
+        {/* ── CHATS TAB ── */}
+        {sidebarTab === 'chats' && (
+          <div className="scroll-area" style={{ flex: 1, padding: '4px 8px' }}>
+            {chats.length === 0 && (
+              <div style={S.emptyState}>
+                <span style={{ fontSize: 28, marginBottom: 8 }}>💬</span>
+                <span style={{ color: 'var(--text3)', fontSize: 13 }}>No chats yet</span>
+              </div>
+            )}
+            {chats.map(c => (
+              <div
+                key={c.id}
+                className="chat-item"
+                style={{ ...S.chatItem, ...(activeId === c.id ? S.chatItemOn : {}) }}
+                onClick={() => setActiveId(c.id)}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ flexShrink: 0, opacity: 0.4, marginTop: 2 }}>
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={S.chatItemTitle}>{c.title}</div>
+                  <div style={S.chatItemMeta}>
+                    {c.messages.length} msgs · {timeAgo(c.ts)}
+                  </div>
+                </div>
+                <button
+                  className="del-btn"
+                  style={S.delBtn}
+                  onClick={e => deleteChat(c.id, e)}
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── REPOS TAB ── */}
+        {sidebarTab === 'repos' && (
+          <div className="scroll-area" style={{ flex: 1, padding: '4px 8px' }}>
+            {reposLoading && <div style={S.emptyState}><div className="spinner" /></div>}
+            {!reposLoading && repos.length === 0 && (
+              <div style={S.emptyState}>
+                <span style={{ fontSize: 28, marginBottom: 8 }}>🐙</span>
+                <span style={{ color: 'var(--text3)', fontSize: 13, textAlign: 'center' }}>
+                  No repos found.<br/>Check GitHub tokens.
+                </span>
+              </div>
+            )}
+            {repos.map(r => (
+              <div key={r.full_name} className="repo-item" style={S.repoItem}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+                  <a href={r.html_url} target="_blank" rel="noreferrer" style={S.repoName}>{r.name}</a>
+                  <button
+                    style={{ ...S.repoLoadBtn, opacity: repoFileLoading === `${r.full_name}/README.md` ? 0.4 : 1 }}
+                    onClick={() => loadRepoFile(r)}
+                    disabled={!!repoFileLoading}
+                    title="Load README into context"
+                  >
+                    {repoFileLoading === `${r.full_name}/README.md` ? '⏳' : '📄'}
+                  </button>
+                </div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <span style={S.repoOwner}>{r.owner?.login}</span>
+                  {r.private && <span style={S.repoPrivateBadge}>private</span>}
+                  {r.language && <span style={S.repoTag}>{r.language}</span>}
+                  {r.stargazers_count > 0 && <span style={S.repoTag}>★ {r.stargazers_count}</span>}
+                </div>
+                {r.description && (
+                  <div style={S.repoDesc}>{r.description.slice(0, 65)}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── TOOLS TAB ── */}
+        {sidebarTab === 'tools' && (
+          <div className="scroll-area" style={{ flex: 1, padding: '6px 8px' }}>
+            {/* AI Models summary */}
+            <ToolSection title="🤖 AI Models" badge={`${models.length}`} badgeColor="var(--gold)" badgeTextColor="#000">
+              {Object.entries(PROVIDER_LABELS).map(([k, label]) => {
+                const n = models.filter(m => m.provider === k).length
+                return n > 0 ? (
+                  <ToolRow key={k}
+                    label={<span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: PROVIDER_COLORS[k], display: 'inline-block' }} />
+                      {label}
+                    </span>}
+                    value={`${n} models`}
+                  />
+                ) : null
+              })}
+            </ToolSection>
+
+            {/* Stripe */}
+            <ToolSection title="💳 Stripe" badge={stripeData && !stripeData.error ? 'live' : 'check key'} badgeColor={stripeData && !stripeData.error ? 'var(--success)' : 'var(--border3)'}>
+              {stripeLoading && <div style={{ padding: 10 }}><div className="spinner spinner-sm" /></div>}
+              {stripeData?.balance?.available?.map((b, i) => (
+                <ToolRow key={i} label={`Available · ${b.currency.toUpperCase()}`} value={fmtCurrency(b.amount, b.currency)} valueColor="var(--success)" />
+              ))}
+              {stripeData?.balance?.pending?.map((b, i) => (
+                <ToolRow key={i} label={`Pending · ${b.currency.toUpperCase()}`} value={fmtCurrency(b.amount, b.currency)} />
+              ))}
+              {stripeData?.error && <ToolRow label="Set STRIPE env var" value="" />}
+            </ToolSection>
+
+            {/* Supabase */}
+            <ToolSection title="🗄️ Supabase" badge="2 dbs" badgeColor="var(--success)">
+              <ToolRow label="REEM DB" value="healthy" valueColor="var(--success)" />
+              <ToolRow label="earthtreasureinc" value="healthy" valueColor="var(--success)" />
+            </ToolSection>
+
+            {/* GitHub */}
+            <ToolSection title="🐙 GitHub" badge="3 accounts" badgeColor="var(--success)">
+              <ToolRow label="ETGE (main)" value="470 commits" />
+              <ToolRow label="earthtreasureinc-ai" value="137 repos" />
+              <ToolRow label="suuqliink" value="54 repos" />
+            </ToolSection>
+
+            {/* Zapier */}
+            <ToolSection title="⚡ Zapier" badge="41 actions" badgeColor="#f97316">
+              <ToolRow label="Slack" value="35 actions" />
+              <ToolRow label="Cursor" value="6 actions" />
+              <ToolRow label="Status" value="connected" valueColor="var(--success)" />
+            </ToolSection>
+
+            {/* Fireflies */}
+            <ToolSection
+              title="🦗 Fireflies"
+              badge={fireflies ? `${fireflies.transcripts?.length || 0} meetings` : 'load'}
+              badgeColor="#6366f1"
+              onBadgeClick={() => {
+                if (!fireflies) {
+                  fetch('/api/fireflies?action=list')
+                    .then(r => r.json()).then(setFireflies).catch(() => {})
+                }
+              }}
+            >
+              {fireflies?.transcripts?.slice(0,3).map((t, i) => (
+                <ToolRow key={i}
+                  label={t.title?.slice(0, 24) || 'Meeting'}
+                  value={`${Math.round((t.duration || 0) / 60)}m`}
+                />
+              ))}
+              {fireflies?.error && <ToolRow label="Set FIREFLIES key" value="" />}
+            </ToolSection>
+
+            {/* Deploy */}
+            <ToolSection
+              title="🚀 Deploy"
+              badge={deployData ? 'refresh' : 'load'}
+              badgeColor="#8b5cf6"
+              onBadgeClick={() => {
+                fetch('/api/deploy').then(r => r.json()).then(setDeployData).catch(() => {})
+              }}
+            >
+              {deployData?.netlify?.sites?.slice(0, 2).map((s, i) => (
+                <ToolRow key={i} label={`▲ ${s.name?.slice(0, 18)}`} value={s.buildStatus || s.state} valueColor={s.buildStatus === 'ready' ? 'var(--success)' : undefined} />
+              ))}
+              {deployData?.railway?.projects?.slice(0, 2).map((p, i) => (
+                <ToolRow key={i} label={`🚂 ${p.name?.slice(0, 18)}`} value="live" valueColor="var(--success)" />
+              ))}
+              {!deployData && <ToolRow label="Click load to fetch status" value="" />}
+            </ToolSection>
+
+            {/* HeyGen */}
+            <ToolSection title="🎬 HeyGen" badge="connected" badgeColor="var(--success)">
+              <ToolRow label="Video AI" value="ready" valueColor="var(--success)" />
+              <ToolRow label="Usage" value="Click 🎬 on any reply" />
+            </ToolSection>
+
+            {/* Security */}
+            <ToolSection title="🔒 Security" badge="3 tools" badgeColor="var(--error)">
+              <ToolRow label="Shodan" value="connected" valueColor="var(--success)" />
+              <ToolRow label="VirusTotal" value="connected" valueColor="var(--success)" />
+              <ToolRow label="AI or Not" value="connected" valueColor="var(--success)" />
+            </ToolSection>
+          </div>
+        )}
+
+        {/* ── HF TAB ── */}
+        {sidebarTab === 'hf' && (
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+            <div style={{ padding: '8px 8px 6px' }}>
+              <input
+                style={{ ...S.searchInput, width: '100%', marginBottom: 6 }}
+                placeholder="Search HuggingFace…"
+                value={hfSearch}
+                onChange={e => setHfSearch(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && loadHf(hfSearch, hfType)}
+              />
+              <div style={{ display: 'flex', gap: 4 }}>
+                {['models', 'spaces', 'datasets'].map(t => (
+                  <button
+                    key={t}
+                    style={{ ...S.chip, ...(hfType === t ? S.chipOn : {}), flex: 1, justifyContent: 'center', fontSize: 10 }}
+                    onClick={() => { setHfType(t); loadHf(hfSearch, t) }}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="scroll-area" style={{ flex: 1, padding: '4px 8px' }}>
+              {hfLoading && <div style={S.emptyState}><div className="spinner" /></div>}
+              {!hfLoading && hfItems.map(item => (
+                <a key={item.id} href={item.url} target="_blank" rel="noreferrer" style={{ ...S.repoItem, display: 'block' }}>
+                  <div style={S.repoName}>{item.name?.split('/').pop()}</div>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 2 }}>
+                    <span style={S.repoOwner}>{item.name?.split('/')[0]}</span>
+                    {item.downloads > 0 && <span style={S.repoTag}>↓{(item.downloads / 1000).toFixed(0)}K</span>}
+                    {item.likes > 0 && <span style={S.repoTag}>♥ {item.likes}</span>}
+                  </div>
+                  {item.tags?.length > 0 && (
+                    <div style={S.repoDesc}>{item.tags.filter(Boolean).slice(0, 3).join(' · ')}</div>
+                  )}
+                </a>
+              ))}
+              {!hfLoading && !hfItems.length && (
+                <div style={S.emptyState}>
+                  <span style={{ color: 'var(--text3)', fontSize: 12 }}>Search above</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Sidebar footer */}
+        <div style={S.sidebarFooter}>
+          <button
+            style={S.settingsToggleBtn}
+            onClick={() => setShowSettings(s => !s)}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+            System Prompt
+          </button>
+          <div style={{ fontSize: 10, color: 'var(--text4)', fontFamily: 'var(--font-mono)' }}>
+            {models.length} models
+          </div>
+        </div>
+      </aside>
+
+      {/* ═══ MAIN ═══ */}
       <main style={S.main}>
-        {/* Top bar */}
+
+        {/* Top Bar */}
         <div style={S.topBar}>
-          <button style={S.toggleSidebarBtn} onClick={() => setSidebarOpen(s => !s)}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          <button
+            style={S.hamburger}
+            onClick={() => setSidebarOpen(o => !o)}
+            aria-label="Toggle sidebar"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <line x1="3" y1="12" x2="21" y2="12"/>
+              <line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
           </button>
 
-          {/* Model selector */}
-          <div style={S.modelSelector} ref={dropdownRef}>
-            <button style={S.modelSelectorBtn} onClick={() => setModelDropdownOpen(o => !o)}>
+          {/* Model Selector */}
+          <div style={S.modelSel} ref={dropdownRef}>
+            <button
+              style={S.modelSelBtn}
+              onClick={() => setDropdownOpen(o => !o)}
+            >
               {modelsLoading ? (
-                <><div className="spinner" /><span style={{ color: 'var(--text3)' }}>Loading models…</span></>
+                <><div className="spinner spinner-sm" /><span style={{ color: 'var(--text3)', fontSize: 13 }}>Loading models…</span></>
               ) : selectedModel ? (
                 <>
-                  <span style={{ ...S.providerDot, background: PROVIDER_COLORS[selectedModel.provider] || '#888' }} />
-                  <span style={S.selectedModelName}>{selectedModel.name}</span>
-                  <span style={S.selectedModelProvider}>{PROVIDER_LABELS[selectedModel.provider] || selectedModel.provider}</span>
+                  <ProviderDot provider={selectedModel.provider} />
+                  <span style={S.modelSelName}>{selectedModel.name}</span>
+                  <span style={S.modelSelProvider}>{PROVIDER_LABELS[selectedModel.provider] || selectedModel.provider}</span>
                 </>
               ) : (
-                <span style={{ color: 'var(--text3)' }}>No models — check API keys</span>
+                <span style={{ color: 'var(--text3)', fontSize: 13 }}>No models — check keys</span>
               )}
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginLeft: 'auto', opacity: 0.4, transform: modelDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}><polyline points="6 9 12 15 18 9"/></svg>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginLeft: 'auto', opacity: 0.35, transform: dropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s', flexShrink: 0 }}>
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
             </button>
 
-            {modelDropdownOpen && (
-              <div style={S.modelDropdown}>
-                <div style={S.modelDropdownSearch}>
+            {dropdownOpen && (
+              <div style={S.modelDropdown} className="slide-down">
+                <div style={{ padding: '10px 10px 6px' }}>
                   <input
-                    style={S.modelSearchInput}
+                    style={S.searchInput}
                     placeholder="Search models…"
                     value={modelSearch}
                     onChange={e => setModelSearch(e.target.value)}
                     autoFocus
                   />
                 </div>
-                <div style={S.providerChips}>
+                <div style={{ display: 'flex', gap: 4, padding: '4px 10px 8px', flexWrap: 'wrap' }}>
                   {providers.map(p => (
                     <button
                       key={p}
-                      style={{ ...S.providerChip, ...(providerFilter === p ? S.providerChipOn : {}) }}
+                      style={{ ...S.chip, ...(providerFilter === p ? S.chipOn : {}) }}
                       onClick={() => setProviderFilter(p)}
                     >
                       {p === 'all' ? 'All' : PROVIDER_LABELS[p] || p}
                     </button>
                   ))}
                 </div>
-                <div style={S.modelDropdownList}>
+                <div className="scroll-area" style={{ maxHeight: 340, paddingBottom: 8 }}>
                   {filteredModels.length === 0 && (
-                    <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text3)', fontSize: 13 }}>No models found</div>
+                    <div style={{ padding: 20, textAlign: 'center', color: 'var(--text3)', fontSize: 13 }}>No models</div>
                   )}
-                  {filteredModels.map(m => (
-                    <button
-                      key={`${m.provider}-${m.id}`}
-                      style={{ ...S.modelOption, ...(selectedModel?.id === m.id && selectedModel?.provider === m.provider ? S.modelOptionOn : {}) }}
-                      onClick={() => { setSelectedModel(m); setModelDropdownOpen(false); setModelSearch('') }}
-                    >
-                      <span style={{ ...S.providerDot, background: PROVIDER_COLORS[m.provider] || '#888', width: 8, height: 8 }} />
-                      <div style={S.modelOptionInner}>
-                        <span style={S.modelOptionName}>{m.name}</span>
-                        <span style={S.modelOptionProvider}>{PROVIDER_LABELS[m.provider] || m.provider}</span>
+                  {Object.entries(groupedModels).map(([provider, mods]) => (
+                    <div key={provider}>
+                      <div style={S.modelGroupHeader}>
+                        <ProviderDot provider={provider} size={6} />
+                        <span>{PROVIDER_LABELS[provider] || provider}</span>
+                        <span style={{ marginLeft: 'auto', opacity: 0.5 }}>{mods.length}</span>
                       </div>
-                    </button>
+                      {mods.map(m => (
+                        <button
+                          key={`${m.provider}-${m.id}`}
+                          className="model-opt"
+                          style={{
+                            ...S.modelOpt,
+                            ...(selectedModel?.id === m.id && selectedModel?.provider === m.provider ? S.modelOptOn : {}),
+                          }}
+                          onClick={() => {
+                            setSelectedModel(m)
+                            setDropdownOpen(false)
+                            setModelSearch('')
+                          }}
+                        >
+                          <span style={S.modelOptName}>{m.name}</span>
+                        </button>
+                      ))}
+                    </div>
                   ))}
                 </div>
               </div>
             )}
           </div>
 
-          {/* Top-right actions */}
-          <div style={{ display: 'flex', gap: 6, marginLeft: 'auto', flexShrink: 0 }}>
+          {/* Actions */}
+          <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
             {messages.length > 0 && (
-              <button
-                style={S.topBarBtn}
-                onClick={exportChat}
-                title="Export chat as Markdown"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                <span style={{ fontSize: 11 }}>Export</span>
+              <button style={S.topBtn} onClick={exportChat} title="Export as Markdown">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
               </button>
             )}
-            <button
-              style={S.topBarBtn}
-              onClick={() => setSearchOpen(o => !o)}
-              title="Search chats (⌘F)"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <span style={{ fontSize: 11 }}>Search</span>
-            </button>
           </div>
         </div>
 
-        <StatusBar models={models} isStreaming={isStreaming} selectedModel={selectedModel} providerColors={PROVIDER_COLORS} />
-
-        {/* Settings panel */}
+        {/* Settings Panel */}
         {showSettings && (
-          <div style={S.settingsPanel} className="fade-in">
+          <div style={S.settingsPanel} className="slide-down">
             <div style={S.settingsPanelHeader}>
-              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600 }}>System Prompt</span>
+              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 14 }}>System Prompt</span>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <select
                   style={S.presetSelect}
-                  value={selectedPreset}
-                  onChange={e => handlePresetChange(e.target.value)}
+                  value={activePreset}
+                  onChange={e => {
+                    const p = PRESETS.find(x => x.label === e.target.value)
+                    if (p) { setSystemPrompt(p.value); setActivePreset(p.label) }
+                  }}
                 >
-                  {PRESET_PROMPTS.map(p => (
-                    <option key={p.label} value={p.label}>{p.label}</option>
-                  ))}
+                  {PRESETS.map(p => <option key={p.label} value={p.label}>{p.label}</option>)}
                 </select>
-                <button style={{ color: 'var(--text3)', fontSize: 13 }} onClick={() => setShowSettings(false)}>✕</button>
+                <button
+                  style={{ color: 'var(--text3)', fontSize: 12, padding: '4px 8px', borderRadius: 5, background: 'var(--bg4)' }}
+                  onClick={() => setShowSettings(false)}
+                >
+                  ✕
+                </button>
               </div>
             </div>
             <textarea
-              style={S.systemPromptInput}
+              style={S.sysPromptInput}
               value={systemPrompt}
               onChange={e => setSystemPrompt(e.target.value)}
-              placeholder="Set a system prompt for your AI…"
               rows={3}
+              placeholder="Set the AI's role, context, and behavior…"
             />
           </div>
         )}
 
         {/* Hidden file input */}
         <input
-          type="file" ref={fileInputRef} style={{ display: 'none' }}
-          onChange={handleFileUpload}
-          accept=".txt,.md,.js,.ts,.jsx,.tsx,.py,.java,.cpp,.c,.h,.cs,.go,.rs,.rb,.php,.swift,.kt,.json,.yaml,.yml,.toml,.xml,.html,.css,.scss,.sh,.bash,.sql,.graphql,.pdf,.png,.jpg,.jpeg,.gif,.webp,.docx,.xlsx,.xls,.csv"
+          ref={fileInputRef}
+          type="file"
+          style={{ display: 'none' }}
+          onChange={e => uploadFile(e.target.files?.[0])}
+          accept=".txt,.md,.js,.ts,.jsx,.tsx,.py,.java,.cpp,.c,.h,.cs,.go,.rs,.rb,.php,.swift,.kt,.json,.yaml,.yml,.toml,.xml,.html,.css,.scss,.sh,.bash,.sql,.graphql,.pdf,.png,.jpg,.jpeg,.gif,.webp"
         />
 
-        {/* Messages */}
+        {/* ═══ MESSAGES ═══ */}
         <div
-          style={{ ...S.messages, ...(isDragging ? S.dragging : {}) }}
+          className={`scroll-area${isDragging ? ' dragging-over' : ''}`}
+          style={S.messages}
           onDragOver={e => { e.preventDefault(); setIsDragging(true) }}
           onDragLeave={() => setIsDragging(false)}
           onDrop={async e => {
-            e.preventDefault(); setIsDragging(false)
+            e.preventDefault()
+            setIsDragging(false)
             const file = e.dataTransfer.files[0]
-            if (!file) return
-            setUploadingFile(true)
-            try {
-              const fd = new FormData(); fd.append('file', file)
-              const res = await fetch('/api/upload', { method: 'POST', body: fd })
-              const data = await res.json()
-              if (data.content) setAttachedFiles(prev => [...prev, { name: file.name, content: data.content, isImage: !!data.isImage, pages: data.pages }])
-              else setError(data.error || 'Upload failed')
-            } catch (err) { setError(err.message) }
-            finally { setUploadingFile(false) }
+            if (file) await uploadFile(file)
           }}
         >
+          {/* Welcome screen */}
           {messages.length === 0 && (
-            <div style={S.welcome} className="fade-in">
-              <div style={S.welcomeIcon}>⬡</div>
-              <h1 style={S.welcomeTitle}>REEMme</h1>
+            <div style={S.welcome} className="fade-in-up">
+              <div style={S.welcomeGlyph}>⬡</div>
+              <h1 style={S.welcomeTitle}>REEM OS</h1>
               <p style={S.welcomeSub}>
-                Your AI command center. {models.length} models · 3 GitHub accounts · Stripe · Supabase · Zapier · HuggingFace
+                Sovereign AI Command Center &mdash; {models.length || '…'} models · 11 providers · 3 GitHub accounts
               </p>
-              <div style={S.welcomeHints}>
+              <div style={S.hintGrid}>
                 {[
-                  'Review my GitHub repo code',
-                  'Search the web for latest AI news',
-                  'Generate an image of a futuristic city',
-                  'What\'s my Stripe balance?',
-                  'Help me debug this error',
-                  'Write a business analysis report',
-                ].map(hint => (
-                  <button key={hint} style={S.hintBtn} onClick={() => setInput(hint)}>
-                    {hint}
+                  ['💎', 'Grade this gemstone photo'],
+                  ['🌍', 'Analyze rare earth mineral markets'],
+                  ['💻', 'Review my GitHub repo architecture'],
+                  ['📊', 'Build an IRR model for extraction'],
+                  ['🔍', 'Search latest AI developments'],
+                  ['🤖', 'Compare 4 AI models on one prompt'],
+                ].map(([icon, hint]) => (
+                  <button
+                    key={hint}
+                    className="hint-btn"
+                    style={S.hintBtn}
+                    onClick={() => setInput(hint)}
+                  >
+                    <span style={{ fontSize: 16, marginBottom: 4, display: 'block' }}>{icon}</span>
+                    <span style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.4 }}>{hint}</span>
                   </button>
                 ))}
               </div>
             </div>
           )}
 
+          {/* Messages */}
           {messages.map((msg, i) => (
-            <div key={i} style={{ ...S.messageRow, ...(msg.role === 'user' ? S.userRow : {}) }} className="fade-in">
-              <div style={{ ...S.avatar, ...(msg.role === 'user' ? S.userAvatar : S.aiAvatar) }}>
+            <div
+              key={i}
+              className={`msg-row${msg.role === 'user' ? '' : ''} fade-in`}
+              style={{ ...S.msgRow, ...(msg.role === 'user' ? S.msgRowUser : {}) }}
+            >
+              <div style={{ ...S.avatar, ...(msg.role === 'user' ? S.avatarUser : S.avatarAI) }}>
                 {msg.role === 'user' ? 'U' : '⬡'}
               </div>
-              <div style={S.messageContent}>
-                <div style={S.messageRole}>
-                  {msg.role === 'user' ? 'You' : (selectedModel?.name || 'Assistant')}
-                </div>
-                <div style={S.messageBody}>
-                  {msg.role === 'assistant' ? (
-                    <div className={`prose${isStreaming && i === messages.length - 1 && msg.content ? ' cursor-blink' : ''}`}>
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                          code({ node, inline, className, children, ...props }) {
-                            const match = /language-(\w+)/.exec(className || '')
-                            if (!inline && match?.[1] === 'mermaid') {
-                              return (
-                                <Suspense fallback={<div style={{ padding: 8, color: 'var(--text3)', fontSize: 12 }}>Loading diagram…</div>}>
-                                  <MermaidDiagram chart={String(children).replace(/\n$/, '')} />
-                                </Suspense>
-                              )
-                            }
-                            return !inline && match ? (
-                              <SyntaxHighlighter style={oneDark} language={match[1]} PreTag="div" {...props}>
-                                {String(children).replace(/\n$/, '')}
-                              </SyntaxHighlighter>
-                            ) : (
-                              <code style={{ background: 'var(--bg4)', padding: '2px 5px', borderRadius: 3, fontSize: '0.9em', fontFamily: 'var(--font-mono)' }} {...props}>{children}</code>
-                            )
-                          },
-                          table({ children }) { return <table style={{ borderCollapse: 'collapse', width: '100%', marginBottom: 12 }}>{children}</table> },
-                          th({ children }) { return <th style={{ border: '1px solid var(--border2)', padding: '6px 10px', background: 'var(--bg4)', textAlign: 'left', fontSize: 13 }}>{children}</th> },
-                          td({ children }) { return <td style={{ border: '1px solid var(--border)', padding: '6px 10px', fontSize: 13 }}>{children}</td> },
-                          a({ href, children }) { return <a href={href} target="_blank" rel="noreferrer" style={{ color: 'var(--gold)', textDecoration: 'underline' }}>{children}</a> },
-                        }}
-                      >{msg.content || ''}</ReactMarkdown>
-                      {isStreaming && i === messages.length - 1 && !msg.content && (
-                        <div style={{ display: 'flex', gap: 4, alignItems: 'center', height: 24 }}>
-                          {[0, 1, 2].map(j => (
-                            <div key={j} style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--text3)', animation: `pulse 1.2s ease-in-out ${j * 0.2}s infinite` }} />
-                          ))}
-                        </div>
-                      )}
-                      {msg.content && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
-                          <button onClick={() => speakText(msg.content)} style={{ padding: '2px 8px', fontSize: 11, background: 'var(--bg4)', border: '1px solid var(--border2)', borderRadius: 4, color: isSpeaking ? 'var(--gold)' : 'var(--text3)', cursor: 'pointer' }}>
-                            {isSpeaking ? '🔊 Stop' : '🔊'}
-                          </button>
-                          <button
-                            onClick={() => { navigator.clipboard?.writeText(msg.content) }}
-                            style={{ padding: '2px 8px', fontSize: 11, background: 'var(--bg4)', border: '1px solid var(--border2)', borderRadius: 4, color: 'var(--text3)', cursor: 'pointer' }}
-                          >
-                            📋
-                          </button>
-                          <button
-                            onClick={() => generateHeygenVideo(msg.content)}
-                            disabled={heygenLoading}
-                            style={{ padding: '2px 8px', fontSize: 11, background: 'var(--bg4)', border: '1px solid var(--border2)', borderRadius: 4, color: heygenLoading ? 'var(--gold)' : 'var(--text3)', cursor: 'pointer' }}
-                            title="Generate HeyGen video from this response"
-                          >
-                            {heygenLoading ? '⏳' : '🎬'}
-                          </button>
-                          {msg.providerUsed && (
-                            <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--font-mono)', background: 'var(--bg4)', padding: '2px 6px', borderRadius: 4, border: '1px solid var(--border)' }}>
-                              via {PROVIDER_LABELS[msg.providerUsed] || msg.providerUsed}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div>
-                      {editingMsgIdx === i ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          <textarea
-                            style={{ ...S.textarea, border: '1px solid var(--gold)', borderRadius: 8, padding: '8px 12px', minHeight: 60 }}
-                            value={editContent}
-                            onChange={e => setEditContent(e.target.value)}
-                            autoFocus
-                          />
-                          <div style={{ display: 'flex', gap: 6 }}>
-                            <button onClick={saveEditedMessage} style={{ ...S.sendBtn, width: 'auto', padding: '4px 12px', fontSize: 12 }}>Save</button>
-                            <button onClick={() => setEditingMsgIdx(null)} style={{ ...S.stopBtn, fontSize: 12 }}>Cancel</button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.content}</div>
-                      )}
-                      {editingMsgIdx !== i && (
-                        <button
-                          onClick={() => { setEditingMsgIdx(i); setEditContent(msg.content) }}
-                          style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4, background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}
-                        >
-                          ✏️ Edit
-                        </button>
-                      )}
-                    </div>
+              <div className="msg-max" style={S.msgContent}>
+                <div style={S.msgRole}>
+                  {msg.role === 'user' ? 'You' : (selectedModel?.name || 'REEM OS')}
+                  {msg.providerUsed && msg.role === 'assistant' && (
+                    <span style={S.msgProvider}>
+                      <ProviderDot provider={msg.providerUsed} size={5} />
+                      {PROVIDER_LABELS[msg.providerUsed] || msg.providerUsed}
+                    </span>
                   )}
                 </div>
+
+                {msg.role === 'assistant' ? (
+                  <div
+                    className={`prose${streaming && i === messages.length - 1 && msg.content ? ' cursor-blink' : ''}`}
+                    style={{ wordBreak: 'break-word' }}
+                  >
+                    {msg.content ? (
+                      <ReactMarkdown components={MD_COMPONENTS}>
+                        {msg.content}
+                      </ReactMarkdown>
+                    ) : (
+                      streaming && i === messages.length - 1 ? (
+                        <div className="thinking">
+                          <span/><span/><span/>
+                        </div>
+                      ) : null
+                    )}
+
+                    {/* Message actions */}
+                    {msg.content && (
+                      <div style={S.msgActions}>
+                        <button
+                          style={S.msgActionBtn}
+                          onClick={() => speakText(msg.content)}
+                          title="Text-to-speech"
+                        >
+                          {isSpeaking ? '🔊' : '🔈'}
+                        </button>
+                        <button
+                          style={S.msgActionBtn}
+                          onClick={() => navigator.clipboard?.writeText(msg.content)}
+                          title="Copy"
+                        >
+                          📋
+                        </button>
+                        <button
+                          style={{ ...S.msgActionBtn, opacity: heygenLoading ? 0.5 : 1 }}
+                          onClick={() => generateVideo(msg.content)}
+                          disabled={heygenLoading}
+                          title="Generate HeyGen video"
+                        >
+                          {heygenLoading ? '⏳' : '🎬'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 15, lineHeight: 1.7 }}>
+                    {msg.content}
+                  </div>
+                )}
               </div>
             </div>
           ))}
 
+          {/* Error banner */}
           {error && (
             <div style={S.errorBanner} className="fade-in">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-              {error}
-              <button onClick={() => setError('')} style={{ marginLeft: 'auto', color: 'var(--text3)', fontSize: 11 }}>✕</button>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <span style={{ flex: 1 }}>{error}</span>
+              <button
+                onClick={() => setError('')}
+                style={{ color: 'var(--text3)', fontSize: 11, padding: '2px 6px', borderRadius: 4 }}
+              >
+                ✕
+              </button>
             </div>
           )}
 
-          {/* HeyGen video output */}
+          {/* HeyGen video */}
           {heygenVideo && (
-            <div style={S.heygenVideoBox} className="fade-in">
-              <div style={S.heygenVideoHeader}>🎬 HeyGen Video</div>
+            <div style={S.videoBox} className="fade-in">
+              <div style={S.videoBoxHeader}>
+                <span>🎬 HeyGen Video</span>
+                <button onClick={() => setHeygenVideo(null)} style={{ color: 'var(--text3)', fontSize: 11 }}>✕</button>
+              </div>
               {typeof heygenVideo === 'string' ? (
-                <video src={heygenVideo} controls style={{ width: '100%', borderRadius: 6, marginTop: 8 }} />
-              ) : heygenVideo.pending ? (
-                <div style={{ padding: '12px 0', color: 'var(--text3)', fontSize: 13 }}>
-                  <div className="spinner" style={{ display: 'inline-block', marginRight: 8 }} />
-                  Video rendering… Video ID: {heygenVideo.videoId}
+                <video src={heygenVideo} controls style={{ width: '100%', borderRadius: 8, marginTop: 8 }} />
+              ) : (
+                <div style={{ padding: '12px 0', color: 'var(--text3)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div className="spinner spinner-sm" />
+                  Rendering… ID: {heygenVideo.id}
                 </div>
-              ) : null}
-              <button onClick={() => setHeygenVideo(null)} style={{ fontSize: 11, color: 'var(--text3)', marginTop: 8 }}>✕ Dismiss</button>
+              )}
             </div>
           )}
 
           {/* Multi-agent results */}
-          {multiAgentResults.length > 0 && (
-            <div style={S.multiAgentSection} className="fade-in">
-              <div style={S.multiAgentSectionHeader}>
-                <span>🤖 Multi-Agent Comparison · {multiAgentResults.length} providers</span>
-                <button onClick={() => setMultiAgentResults([])} style={{ fontSize: 11, color: 'var(--text3)' }}>✕</button>
+          {agentResults.length > 0 && (
+            <div style={S.agentSection} className="fade-in">
+              <div style={S.agentSectionHeader}>
+                <span>🤖 Multi-Agent · {agentResults.length} providers compared</span>
+                <button onClick={() => setAgentResults([])} style={{ color: 'var(--text3)', fontSize: 11 }}>✕</button>
               </div>
-              <div style={S.multiAgentGrid}>
-                {multiAgentResults.map((r, i) => (
-                  <div key={i} style={S.multiAgentCard}>
-                    <div style={S.multiAgentCardHeader}>
-                      <span style={{ ...S.providerDot, background: PROVIDER_COLORS[r.provider] || '#888', width: 8, height: 8 }} />
-                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)', flex: 1 }}>{PROVIDER_LABELS[r.provider] || r.provider}</span>
-                      {r.latencyMs && <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--font-mono)' }}>{r.latencyMs}ms</span>}
+              <div style={S.agentGrid}>
+                {agentResults.map((r, i) => (
+                  <div key={i} style={S.agentCard}>
+                    <div style={S.agentCardHeader}>
+                      <ProviderDot provider={r.provider} size={7} />
+                      <span style={{ fontWeight: 600, fontSize: 12, color: 'var(--text2)', flex: 1 }}>
+                        {PROVIDER_LABELS[r.provider] || r.provider}
+                      </span>
+                      {r.latencyMs > 0 && <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--font-mono)' }}>{r.latencyMs}ms</span>}
                       <button onClick={() => navigator.clipboard?.writeText(r.content || '')} style={{ fontSize: 10, color: 'var(--text3)', marginLeft: 4 }}>📋</button>
                     </div>
-                    <div style={S.multiAgentCardBody}>
-                      {r.error ? <span style={{ color: 'var(--red)', fontSize: 12 }}>{r.error}</span> : (
-                        <div className="prose"><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ code({ node, inline, className, children, ...props }) { const match = /language-(\w+)/.exec(className || ''); return !inline && match ? <SyntaxHighlighter style={oneDark} language={match[1]} PreTag="div" {...props}>{String(children).replace(/\n$/, '')}</SyntaxHighlighter> : <code style={{ background: 'var(--bg4)', padding: '2px 5px', borderRadius: 3, fontSize: '0.9em' }} {...props}>{children}</code> } }}>{r.content || ''}</ReactMarkdown></div>
+                    <div className="prose scroll-area" style={S.agentCardBody}>
+                      {r.error ? (
+                        <span style={{ color: 'var(--error)', fontSize: 12 }}>{r.error}</span>
+                      ) : (
+                        <ReactMarkdown components={MD_COMPONENTS}>{r.content || ''}</ReactMarkdown>
                       )}
                     </div>
                   </div>
@@ -1402,64 +1349,96 @@ export default function REEMme() {
             </div>
           )}
 
-          {multiAgentLoading && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 24px', color: 'var(--text3)', fontSize: 13 }} className="fade-in">
+          {agentLoading && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 24px', color: 'var(--text3)', fontSize: 13 }} className="fade-in">
               <div className="spinner" />
-              Running {multiAgentProviders.length} providers in parallel…
+              Running {agentProviders.length} providers in parallel…
             </div>
           )}
 
-          <div ref={bottomRef} />
+          <div ref={bottomRef} style={{ height: 1 }} />
         </div>
 
-        {/* Input */}
+        {/* ═══ INPUT AREA ═══ */}
         <div style={S.inputArea}>
+
           {/* Multi-agent controls */}
-          {multiAgentMode && (
-            <div style={S.multiAgentControls}>
-              <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--font-mono)', flexShrink: 0 }}>Agents:</span>
-              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', flex: 1 }}>
-                {Object.entries(PROVIDER_LABELS).map(([key, label]) => (
+          {agentMode && (
+            <div style={S.agentControls}>
+              <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--font-mono)', flexShrink: 0 }}>
+                Agents:
+              </span>
+              <div style={{ display: 'flex', gap: 4, flex: 1, flexWrap: 'wrap' }}>
+                {Object.keys(PROVIDER_LABELS).map(k => (
                   <button
-                    key={key}
-                    style={{ ...S.providerChip, ...(multiAgentProviders.includes(key) ? { background: PROVIDER_COLORS[key] || 'var(--gold)', borderColor: PROVIDER_COLORS[key] || 'var(--gold)', color: '#fff' } : {}) }}
-                    onClick={() => setMultiAgentProviders(prev => prev.includes(key) ? prev.filter(p => p !== key) : [...prev, key])}
+                    key={k}
+                    style={{
+                      ...S.chip,
+                      ...(agentProviders.includes(k) ? {
+                        background: PROVIDER_COLORS[k] || 'var(--gold)',
+                        borderColor: PROVIDER_COLORS[k] || 'var(--gold)',
+                        color: '#fff',
+                      } : {}),
+                    }}
+                    onClick={() =>
+                      setAgentProviders(p =>
+                        p.includes(k) ? p.filter(x => x !== k) : [...p, k]
+                      )
+                    }
                   >
-                    {label}
+                    {PROVIDER_LABELS[k]}
                   </button>
                 ))}
               </div>
               <button
-                style={{ padding: '4px 12px', borderRadius: 6, background: '#6366f1', border: 'none', color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer', flexShrink: 0, opacity: (input.trim() || attachedFiles.length) && multiAgentProviders.length ? 1 : 0.4 }}
-                onClick={runMultiAgent}
-                disabled={multiAgentLoading || (!input.trim() && !attachedFiles.length) || multiAgentProviders.length === 0}
+                style={{
+                  padding: '5px 14px',
+                  borderRadius: 'var(--r)',
+                  background: '#6366f1',
+                  border: 'none',
+                  color: '#fff',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  opacity: (input.trim() || attachedFiles.length) && agentProviders.length ? 1 : 0.35,
+                  transition: 'opacity 0.15s',
+                }}
+                onClick={runAgents}
+                disabled={agentLoading || (!input.trim() && !attachedFiles.length) || !agentProviders.length}
               >
-                {multiAgentLoading ? '⏳' : '▶ Run All'}
+                {agentLoading ? '⏳' : '▶ Run All'}
               </button>
             </div>
           )}
 
-          {/* Attachment chips */}
+          {/* Attached files */}
           {(attachedFiles.length > 0 || uploadingFile) && (
-            <div style={S.attachChipsRow}>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', paddingBottom: 8, maxWidth: 'var(--msg-max-w)', margin: '0 auto', width: '100%' }}>
               {attachedFiles.map((f, idx) => (
-                <div key={idx} style={S.attachChip}>
+                <div key={idx} style={S.fileChip}>
                   <span>{f.isImage ? '🖼️' : '📄'}</span>
-                  <span style={S.attachChipName}>{f.name}</span>
-                  {f.pages && <span style={S.attachChipMeta}>{f.pages}p</span>}
-                  <button onClick={() => removeAttachment(idx)} style={S.attachChipRemove}>✕</button>
+                  <span style={{ maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11 }}>{f.name}</span>
+                  {f.pages && <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--font-mono)' }}>{f.pages}p</span>}
+                  <button onClick={() => setAttachedFiles(p => p.filter((_, j) => j !== idx))} style={{ fontSize: 10, color: 'var(--text3)', padding: '0 2px' }}>✕</button>
                 </div>
               ))}
               {uploadingFile && (
-                <div style={S.attachChip}>
-                  <div className="spinner" style={{ width: 10, height: 10 }} />
-                  <span style={S.attachChipName}>Uploading…</span>
+                <div style={S.fileChip}>
+                  <div className="spinner spinner-sm" />
+                  <span style={{ fontSize: 11, color: 'var(--text3)' }}>Uploading…</span>
                 </div>
               )}
             </div>
           )}
 
-          <div style={S.inputBox}>
+          {/* Input box */}
+          <div
+            style={{
+              ...S.inputBox,
+              ...(inputFocused ? { borderColor: 'var(--border3)', boxShadow: '0 0 0 1px var(--border3)' } : {}),
+            }}
+          >
             <textarea
               ref={textareaRef}
               style={S.textarea}
@@ -1467,203 +1446,888 @@ export default function REEMme() {
               value={input}
               onChange={e => { setInput(e.target.value); autoResize(e) }}
               onKeyDown={handleKeyDown}
+              onFocus={() => setInputFocused(true)}
+              onBlur={() => setInputFocused(false)}
               rows={1}
               disabled={!selectedModel}
             />
             <div style={S.inputActions}>
               <VoiceInput
-                onTranscript={(t) => setInput(prev => (prev ? prev + ' ' : '') + t)}
-                disabled={!selectedModel || isStreaming}
+                onTranscript={t => setInput(p => (p ? p + ' ' : '') + t)}
+                disabled={!selectedModel || streaming}
               />
               <button
+                title="Web search"
                 onClick={() => setWebSearch(w => !w)}
-                style={{ padding: '6px 10px', borderRadius: 6, background: webSearch ? 'var(--gold-dim)' : 'var(--bg4)', border: `1px solid ${webSearch ? 'var(--gold)' : 'var(--border2)'}`, color: webSearch ? 'var(--gold)' : 'var(--text3)', fontSize: 11, cursor: 'pointer', marginLeft: 4 }}
-                title="Toggle web search"
+                style={{
+                  ...S.actionBtn,
+                  background: webSearch ? 'var(--gold-dim)' : 'var(--bg4)',
+                  borderColor: webSearch ? 'rgba(200,134,26,0.35)' : 'var(--border2)',
+                  color: webSearch ? 'var(--gold)' : 'var(--text3)',
+                }}
               >
                 🔍
               </button>
               <button
+                title="Attach file"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploadingFile}
-                style={{ padding: '6px 10px', borderRadius: 6, background: attachedFiles.length > 0 ? 'rgba(212,168,83,0.15)' : 'var(--bg4)', border: `1px solid ${attachedFiles.length > 0 ? 'var(--gold)' : 'var(--border2)'}`, color: attachedFiles.length > 0 ? 'var(--gold)' : 'var(--text3)', fontSize: 11, cursor: 'pointer', marginLeft: 4 }}
-                title="Attach file (PDF, code, images)"
+                style={{
+                  ...S.actionBtn,
+                  background: attachedFiles.length ? 'var(--gold-dim)' : 'var(--bg4)',
+                  borderColor: attachedFiles.length ? 'rgba(200,134,26,0.35)' : 'var(--border2)',
+                  color: attachedFiles.length ? 'var(--gold)' : 'var(--text3)',
+                }}
               >
                 {uploadingFile ? '⏳' : `📎${attachedFiles.length > 0 ? ` ${attachedFiles.length}` : ''}`}
               </button>
               <button
-                onClick={() => setMultiAgentMode(m => !m)}
-                style={{ padding: '6px 10px', borderRadius: 6, background: multiAgentMode ? 'rgba(99,102,241,0.2)' : 'var(--bg4)', border: `1px solid ${multiAgentMode ? '#6366f1' : 'var(--border2)'}`, color: multiAgentMode ? '#6366f1' : 'var(--text3)', fontSize: 11, cursor: 'pointer', marginLeft: 4 }}
-                title="Multi-agent comparison mode"
+                title="Multi-agent mode"
+                onClick={() => setAgentMode(m => !m)}
+                style={{
+                  ...S.actionBtn,
+                  background: agentMode ? 'rgba(99,102,241,0.15)' : 'var(--bg4)',
+                  borderColor: agentMode ? 'rgba(99,102,241,0.4)' : 'var(--border2)',
+                  color: agentMode ? '#818cf8' : 'var(--text3)',
+                }}
               >
                 🤖
               </button>
               <button
+                title="Generate image"
                 onClick={generateImage}
-                disabled={generatingImage || !input}
-                style={{ padding: '6px 10px', borderRadius: 6, background: 'var(--bg4)', border: '1px solid var(--border2)', color: generatingImage ? 'var(--gold)' : 'var(--text3)', fontSize: 11, cursor: 'pointer', marginLeft: 4, opacity: input ? 1 : 0.4 }}
-                title="Generate image from prompt"
+                disabled={generatingImg || !input.trim()}
+                style={{
+                  ...S.actionBtn,
+                  opacity: input.trim() ? 1 : 0.35,
+                  color: generatingImg ? 'var(--gold)' : 'var(--text3)',
+                }}
               >
-                {generatingImage ? '⏳' : '🖼️'}
+                {generatingImg ? '⏳' : '🖼️'}
               </button>
-              {isStreaming ? (
-                <button style={{ ...S.stopBtn, marginLeft: 4 }} onClick={stopStreaming}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+
+              {streaming ? (
+                <button style={S.stopBtn} onClick={stopStream}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                    <rect x="6" y="6" width="12" height="12" rx="1"/>
+                  </svg>
                   Stop
                 </button>
               ) : (
                 <button
-                  style={{ ...S.sendBtn, opacity: input.trim() && selectedModel ? 1 : 0.3, marginLeft: 4 }}
+                  style={{
+                    ...S.sendBtn,
+                    opacity: input.trim() && selectedModel && !streaming ? 1 : 0.3,
+                  }}
                   onClick={sendMessage}
-                  disabled={!input.trim() || !selectedModel}
+                  disabled={!input.trim() || !selectedModel || streaming}
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <line x1="12" y1="19" x2="12" y2="5"/>
+                    <polyline points="5 12 12 5 19 12"/>
+                  </svg>
                 </button>
               )}
             </div>
           </div>
-          <div style={S.inputFooter}>
-            Enter to send · Shift+Enter newline · 🎤 Voice · 🔍 Web · 🖼️ Image · 📎 Files · 🤖 Multi-agent · Drop files to attach ·&nbsp;
-            <span style={{ color: 'var(--gold)', opacity: 0.7 }}>{selectedModel?.name || 'no model selected'}</span>
+
+          <div style={S.inputHint}>
+            ↵ send &nbsp;·&nbsp; ⇧↵ newline &nbsp;·&nbsp;
+            🔍 web &nbsp;·&nbsp; 📎 files &nbsp;·&nbsp; 🤖 agents &nbsp;·&nbsp; 🎤 voice &nbsp;·&nbsp; 🖼️ image &nbsp;·&nbsp;
+            <span style={{ color: 'var(--gold)', opacity: 0.6 }}>{selectedModel?.name || '—'}</span>
           </div>
         </div>
       </main>
-      {searchOpen && (
-        <ChatSearch
-          chats={chats}
-          onSelect={(chatId) => setActiveChatId(chatId)}
-          onClose={() => setSearchOpen(false)}
-        />
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════
+// TOOL SECTION COMPONENTS
+// ═══════════════════════════════════════════════════════
+
+function ToolSection({ title, badge, badgeColor = 'var(--text3)', badgeTextColor = '#fff', onBadgeClick, children }) {
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '5px 4px 4px',
+        fontSize: 10, fontWeight: 700, color: 'var(--text3)',
+        letterSpacing: '0.07em', textTransform: 'uppercase', fontFamily: 'var(--font-mono)',
+      }}>
+        <span>{title}</span>
+        {badge && (
+          <span
+            onClick={onBadgeClick}
+            style={{
+              fontSize: 9, padding: '1px 7px', borderRadius: 99,
+              background: badgeColor, color: badgeTextColor,
+              fontWeight: 700, letterSpacing: '0.03em',
+              cursor: onBadgeClick ? 'pointer' : 'default',
+              border: 'none',
+            }}
+          >
+            {badge}
+          </span>
+        )}
+      </div>
+      <div style={{
+        background: 'var(--bg3)',
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--r-lg)',
+        overflow: 'hidden',
+      }}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function ToolRow({ label, value, valueColor }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '6px 12px', borderBottom: '1px solid var(--border)',
+    }}>
+      <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--font-mono)' }}>{label}</span>
+      {value && (
+        <span style={{ fontSize: 11, color: valueColor || 'var(--text2)', fontFamily: 'var(--font-mono)', textAlign: 'right' }}>
+          {value}
+        </span>
       )}
     </div>
   )
 }
 
-// ── Styles ──────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+// STYLES
+// ═══════════════════════════════════════════════════════
+
 const S = {
-  root: { display: 'flex', height: '100vh', background: 'var(--bg)', overflow: 'hidden' },
+  root: {
+    display: 'flex',
+    height: '100dvh',
+    background: 'var(--bg)',
+    overflow: 'hidden',
+    position: 'relative',
+  },
 
-  sidebar: { width: 260, background: 'var(--bg2)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', flexShrink: 0 },
-  sidebarHeader: { padding: '16px 14px 12px', borderBottom: '1px solid var(--border)' },
-  logo: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 },
-  logoIcon: { fontSize: 22, color: 'var(--gold)' },
-  logoText: { fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, letterSpacing: '-0.02em', color: 'var(--text)' },
-  newChatBtn: { display: 'flex', alignItems: 'center', gap: 6, width: '100%', padding: '7px 10px', background: 'var(--gold-dim)', border: '1px solid rgba(212,168,83,0.25)', borderRadius: 7, color: 'var(--gold)', fontSize: 13, fontWeight: 500, transition: 'all .15s' },
-  tabRow: { display: 'flex', padding: '8px 10px 4px', gap: 3 },
-  tab: { flex: 1, padding: '5px 0', borderRadius: 6, fontSize: 11, fontWeight: 500, color: 'var(--text3)', transition: 'all .15s', letterSpacing: '0.02em' },
-  tabOn: { background: 'var(--bg4)', color: 'var(--text)' },
-  chatList: { flex: 1, overflowY: 'auto', padding: '4px 8px' },
-  chatItem: { display: 'flex', alignItems: 'center', gap: 8, padding: '8px 8px', borderRadius: 7, cursor: 'pointer', transition: 'background .1s', marginBottom: 1 },
-  chatItemOn: { background: 'var(--bg4)' },
-  chatItemInner: { flex: 1, minWidth: 0 },
-  chatItemTitle: { display: 'block', fontSize: 13, color: 'var(--text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  chatItemTime: { display: 'block', fontSize: 10, color: 'var(--text3)', marginTop: 1 },
-  chatDeleteBtn: { opacity: 0, fontSize: 11, color: 'var(--text3)', padding: '2px 4px', borderRadius: 4, transition: 'opacity .15s', background: 'none', border: 'none', cursor: 'pointer' },
-  repoList: { flex: 1, overflowY: 'auto', padding: '6px 8px' },
-  repoItem: { display: 'block', padding: '8px 9px', borderRadius: 7, marginBottom: 2, transition: 'background .1s', cursor: 'pointer' },
-  repoItemTop: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 },
-  repoName: { fontSize: 13, fontWeight: 500, color: 'var(--text)' },
-  repoLoadBtn: { fontSize: 13, padding: '2px 4px', background: 'none', border: 'none', cursor: 'pointer', borderRadius: 4, transition: 'opacity .15s' },
-  repoMeta: { display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' },
-  repoAccount: { fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--font-mono)' },
-  repoPrivate: { fontSize: 10, color: 'var(--gold)', background: 'var(--gold-dim)', padding: '1px 5px', borderRadius: 3 },
-  repoLang: { fontSize: 10, color: 'var(--text3)' },
-  repoDesc: { fontSize: 11, color: 'var(--text3)', marginTop: 3, lineHeight: 1.4 },
-  sidebarEmpty: { display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, padding: 24, textAlign: 'center' },
-  sidebarBottom: { padding: '10px 12px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-  settingsBtn: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text3)', padding: '5px 7px', borderRadius: 5, transition: 'all .15s' },
-  modelCount: { fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--font-mono)' },
+  // ── Sidebar ──
+  sidebar: {}, // handled via CSS class
 
-  // Tools tab
-  toolsList: { flex: 1, overflowY: 'auto', padding: '8px 8px' },
-  toolSection: { marginBottom: 10 },
-  toolSectionHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 4px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text2)', letterSpacing: '0.04em', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' },
-  toolBadge: { fontSize: 9, padding: '1px 6px', borderRadius: 10, color: '#fff', fontWeight: 600, letterSpacing: '0.02em' },
-  toolCard: { background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' },
-  toolRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 10px', borderBottom: '1px solid var(--border)' },
-  toolLabel: { fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--font-mono)' },
-  toolValue: { fontSize: 11, color: 'var(--text2)', fontFamily: 'var(--font-mono)', textAlign: 'right' },
+  logoArea: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    padding: '18px 14px 14px',
+    borderBottom: '1px solid var(--border)',
+  },
+  logoMark: {
+    fontSize: 26,
+    color: 'var(--gold)',
+    lineHeight: 1,
+    flexShrink: 0,
+    filter: 'drop-shadow(0 0 8px rgba(200,134,26,0.25))',
+  },
+  logoName: {
+    fontFamily: 'var(--font-display)',
+    fontWeight: 700,
+    fontSize: 18,
+    letterSpacing: '-0.01em',
+    color: 'var(--text)',
+    lineHeight: 1.2,
+  },
+  logoSub: {
+    fontSize: 10,
+    color: 'var(--text3)',
+    letterSpacing: '0.12em',
+    textTransform: 'uppercase',
+    fontFamily: 'var(--font-mono)',
+    marginTop: 1,
+  },
+  newChatBtnIcon: {
+    marginLeft: 'auto',
+    width: 30,
+    height: 30,
+    borderRadius: 'var(--r)',
+    background: 'var(--gold-dim)',
+    border: '1px solid rgba(200,134,26,0.25)',
+    color: 'var(--gold)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    transition: 'all 0.15s',
+  },
 
-  // Main
-  main: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' },
-  topBar: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderBottom: '1px solid var(--border)', background: 'var(--bg2)', zIndex: 10 },
-  toggleSidebarBtn: { padding: 6, borderRadius: 6, color: 'var(--text3)', transition: 'all .15s', flexShrink: 0 },
-  topBarBtn: { display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 6, background: 'var(--bg4)', border: '1px solid var(--border2)', color: 'var(--text3)', fontSize: 12, cursor: 'pointer', transition: 'all .15s', fontFamily: 'var(--font)' },
+  tabRow: {
+    display: 'flex',
+    padding: '8px 8px 4px',
+    gap: 3,
+  },
+  tab: {
+    flex: 1,
+    padding: '5px 0',
+    borderRadius: 'var(--r)',
+    fontSize: 11,
+    fontWeight: 500,
+    color: 'var(--text3)',
+    letterSpacing: '0.03em',
+    transition: 'all 0.12s',
+  },
+  tabOn: {
+    background: 'var(--bg4)',
+    color: 'var(--text)',
+  },
 
-  // Model selector
-  modelSelector: { position: 'relative', flex: 1, maxWidth: 420 },
-  modelSelectorBtn: { display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 10px', background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', fontSize: 13, transition: 'border-color .15s' },
-  providerDot: { width: 8, height: 8, borderRadius: '50%', flexShrink: 0, display: 'inline-block' },
-  selectedModelName: { fontWeight: 500, flex: 1 },
-  selectedModelProvider: { fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--font-mono)' },
-  modelDropdown: { position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 10, zIndex: 100, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' },
-  modelDropdownSearch: { padding: '10px 10px 6px' },
-  modelSearchInput: { width: '100%', background: 'var(--bg4)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', padding: '7px 10px', fontSize: 13, outline: 'none' },
-  providerChips: { display: 'flex', gap: 4, padding: '4px 10px 8px', flexWrap: 'wrap' },
-  providerChip: { fontSize: 10, padding: '2px 8px', borderRadius: 20, border: '1px solid var(--border)', color: 'var(--text3)', background: 'none', transition: 'all .12s', fontFamily: 'var(--font-mono)', cursor: 'pointer' },
-  providerChipOn: { background: 'var(--gold)', borderColor: 'var(--gold)', color: '#000' },
-  modelDropdownList: { maxHeight: 320, overflowY: 'auto', padding: '4px 6px 8px' },
-  modelOption: { display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '7px 8px', borderRadius: 6, transition: 'background .1s', textAlign: 'left', color: 'var(--text2)' },
-  modelOptionOn: { background: 'var(--bg4)', color: 'var(--text)' },
-  modelOptionInner: { display: 'flex', flexDirection: 'column', gap: 1 },
-  modelOptionName: { fontSize: 13, fontWeight: 500 },
-  modelOptionProvider: { fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--font-mono)' },
+  chatItem: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 8,
+    padding: '8px 8px',
+    borderRadius: 'var(--r)',
+    cursor: 'pointer',
+    marginBottom: 1,
+  },
+  chatItemOn: {
+    background: 'var(--bg4)',
+    borderLeft: '2px solid var(--gold)',
+    paddingLeft: 6,
+  },
+  chatItemTitle: {
+    display: 'block',
+    fontSize: 12.5,
+    color: 'var(--text2)',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    lineHeight: 1.4,
+  },
+  chatItemMeta: {
+    display: 'block',
+    fontSize: 10,
+    color: 'var(--text3)',
+    marginTop: 2,
+    fontFamily: 'var(--font-mono)',
+  },
+  delBtn: {
+    opacity: 0,
+    fontSize: 10,
+    color: 'var(--text3)',
+    padding: '2px 5px',
+    borderRadius: 4,
+    marginTop: 1,
+    flexShrink: 0,
+  },
 
-  // Settings
-  settingsPanel: { padding: '12px 16px', borderBottom: '1px solid var(--border)', background: 'var(--bg2)' },
-  settingsPanelHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, fontSize: 13 },
-  systemPromptInput: { width: '100%', background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 7, color: 'var(--text)', padding: '8px 12px', fontSize: 13, resize: 'none', outline: 'none', lineHeight: 1.5, fontFamily: 'var(--font)' },
-  presetSelect: { background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text2)', padding: '3px 8px', fontSize: 12, outline: 'none', fontFamily: 'var(--font)', cursor: 'pointer' },
+  repoItem: {
+    padding: '9px 9px',
+    borderRadius: 'var(--r)',
+    marginBottom: 2,
+    cursor: 'pointer',
+  },
+  repoName: {
+    fontSize: 13,
+    fontWeight: 500,
+    color: 'var(--text)',
+  },
+  repoOwner: {
+    fontSize: 10,
+    color: 'var(--text3)',
+    fontFamily: 'var(--font-mono)',
+  },
+  repoPrivateBadge: {
+    fontSize: 9,
+    color: 'var(--gold)',
+    background: 'var(--gold-dim)',
+    padding: '1px 5px',
+    borderRadius: 99,
+    fontFamily: 'var(--font-mono)',
+    fontWeight: 600,
+  },
+  repoTag: {
+    fontSize: 10,
+    color: 'var(--text3)',
+  },
+  repoDesc: {
+    fontSize: 11,
+    color: 'var(--text3)',
+    marginTop: 4,
+    lineHeight: 1.45,
+  },
+  repoLoadBtn: {
+    fontSize: 13,
+    padding: '2px 4px',
+    borderRadius: 4,
+    transition: 'opacity 0.15s',
+    flexShrink: 0,
+  },
 
-  // Messages
-  messages: { flex: 1, overflowY: 'auto', padding: '24px 0', display: 'flex', flexDirection: 'column' },
-  welcome: { margin: 'auto', textAlign: 'center', padding: '0 24px', maxWidth: 600 },
-  welcomeIcon: { fontSize: 44, color: 'var(--gold)', marginBottom: 16, display: 'block' },
-  welcomeTitle: { fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 36, letterSpacing: '-0.03em', color: 'var(--text)', marginBottom: 8 },
-  welcomeSub: { color: 'var(--text3)', fontSize: 14, marginBottom: 28, lineHeight: 1.6 },
-  welcomeHints: { display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' },
-  hintBtn: { padding: '7px 14px', background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 20, color: 'var(--text2)', fontSize: 13, transition: 'all .15s', cursor: 'pointer' },
+  emptyState: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+    textAlign: 'center',
+  },
 
-  messageRow: { display: 'flex', gap: 14, padding: '12px 24px', maxWidth: 820, width: '100%', alignSelf: 'center', alignItems: 'flex-start' },
-  userRow: { flexDirection: 'row-reverse' },
-  avatar: { width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0, marginTop: 2 },
-  userAvatar: { background: 'var(--gold-dim)', color: 'var(--gold)', border: '1px solid rgba(212,168,83,0.3)', fontFamily: 'var(--font-display)' },
-  aiAvatar: { background: 'var(--bg4)', color: 'var(--text2)', border: '1px solid var(--border)', fontSize: 16 },
-  messageContent: { flex: 1, minWidth: 0 },
-  messageRole: { fontSize: 11, fontWeight: 600, color: 'var(--text3)', marginBottom: 6, letterSpacing: '0.05em', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' },
-  messageBody: { fontSize: 15, lineHeight: 1.7, color: 'var(--text)', wordBreak: 'break-word' },
-  errorBanner: { display: 'flex', alignItems: 'center', gap: 8, margin: '8px 24px', padding: '10px 14px', background: '#1f0a0a', border: '1px solid #5a1a1a', borderRadius: 8, color: 'var(--red)', fontSize: 13 },
+  sidebarFooter: {
+    padding: '10px 12px',
+    borderTop: '1px solid var(--border)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  settingsToggleBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    fontSize: 12,
+    color: 'var(--text3)',
+    padding: '5px 8px',
+    borderRadius: 'var(--r)',
+    background: 'var(--bg3)',
+    border: '1px solid var(--border)',
+    transition: 'all 0.15s',
+  },
 
-  // Drag-and-drop
-  dragging: { outline: '2px dashed var(--gold)', outlineOffset: -4, background: 'rgba(212,168,83,0.04)' },
+  // ── Main ──
+  main: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    minWidth: 0,
+  },
 
-  // HeyGen video
-  heygenVideoBox: { margin: '8px 24px', padding: '14px 16px', background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 10, maxWidth: 640, alignSelf: 'center', width: 'calc(100% - 48px)' },
-  heygenVideoHeader: { fontSize: 12, fontWeight: 600, color: 'var(--text3)', letterSpacing: '0.04em', fontFamily: 'var(--font-mono)', marginBottom: 4 },
+  topBar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    padding: '8px 14px',
+    borderBottom: '1px solid var(--border)',
+    background: 'var(--bg2)',
+    height: 'var(--topbar-h)',
+    flexShrink: 0,
+  },
+  hamburger: {
+    width: 34,
+    height: 34,
+    borderRadius: 'var(--r)',
+    color: 'var(--text3)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'all 0.15s',
+    flexShrink: 0,
+    background: 'var(--bg3)',
+    border: '1px solid var(--border)',
+  },
+  topBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 32,
+    height: 32,
+    borderRadius: 'var(--r)',
+    background: 'var(--bg3)',
+    border: '1px solid var(--border)',
+    color: 'var(--text3)',
+    transition: 'all 0.15s',
+  },
 
-  // Multi-agent section (in messages)
-  multiAgentSection: { margin: '8px 24px', maxWidth: 820, alignSelf: 'center', width: 'calc(100% - 48px)' },
-  multiAgentSectionHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, fontWeight: 600, color: 'var(--text3)', fontFamily: 'var(--font-mono)', letterSpacing: '0.04em', marginBottom: 8, padding: '0 2px' },
-  multiAgentGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 },
-  multiAgentCard: { background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 10, overflow: 'hidden' },
-  multiAgentCardHeader: { display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderBottom: '1px solid var(--border)', background: 'var(--bg4)' },
-  multiAgentCardBody: { padding: '10px 12px', fontSize: 13, lineHeight: 1.6, color: 'var(--text)', maxHeight: 260, overflowY: 'auto', wordBreak: 'break-word' },
+  // ── Model selector ──
+  modelSel: {
+    position: 'relative',
+    flex: 1,
+    maxWidth: 400,
+  },
+  modelSelBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    width: '100%',
+    padding: '7px 10px',
+    background: 'var(--bg3)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--r)',
+    color: 'var(--text)',
+    fontSize: 13,
+    transition: 'border-color 0.15s',
+    cursor: 'pointer',
+  },
+  modelSelName: {
+    fontWeight: 500,
+    flex: 1,
+    textAlign: 'left',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    fontSize: 13,
+  },
+  modelSelProvider: {
+    fontSize: 10,
+    color: 'var(--text3)',
+    fontFamily: 'var(--font-mono)',
+    flexShrink: 0,
+  },
+  modelDropdown: {
+    position: 'absolute',
+    top: 'calc(100% + 6px)',
+    left: 0,
+    right: 0,
+    background: 'var(--bg3)',
+    border: '1px solid var(--border2)',
+    borderRadius: 'var(--r-xl)',
+    zIndex: 100,
+    overflow: 'hidden',
+    boxShadow: 'var(--shadow-lg)',
+  },
+  modelGroupHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    padding: '6px 12px 4px',
+    fontSize: 10,
+    fontWeight: 700,
+    color: 'var(--text3)',
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    fontFamily: 'var(--font-mono)',
+    borderBottom: '1px solid var(--border)',
+    background: 'var(--bg4)',
+    marginTop: 4,
+  },
+  modelOpt: {
+    display: 'flex',
+    alignItems: 'center',
+    width: '100%',
+    padding: '7px 14px',
+    textAlign: 'left',
+    color: 'var(--text2)',
+    fontSize: 13,
+    transition: 'background 0.1s',
+  },
+  modelOptOn: {
+    background: 'var(--bg4)',
+    color: 'var(--text)',
+  },
+  modelOptName: {
+    flex: 1,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
 
-  // Multi-agent controls (above input)
-  multiAgentControls: { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0 8px', maxWidth: 820, margin: '0 auto', flexWrap: 'wrap' },
+  searchInput: {
+    width: '100%',
+    background: 'var(--bg4)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--r)',
+    color: 'var(--text)',
+    padding: '7px 10px',
+    fontSize: 13,
+  },
 
-  // Attachment chips
-  attachChipsRow: { display: 'flex', gap: 6, flexWrap: 'wrap', padding: '0 0 8px', maxWidth: 820, margin: '0 auto' },
-  attachChip: { display: 'flex', alignItems: 'center', gap: 5, padding: '4px 8px', background: 'var(--bg4)', border: '1px solid var(--border2)', borderRadius: 20, fontSize: 12, color: 'var(--text2)' },
-  attachChipName: { maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11 },
-  attachChipMeta: { fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--font-mono)' },
-  attachChipRemove: { fontSize: 10, color: 'var(--text3)', cursor: 'pointer', background: 'none', border: 'none', padding: '0 2px', lineHeight: 1 },
+  chip: {
+    fontSize: 10,
+    padding: '3px 9px',
+    borderRadius: 99,
+    border: '1px solid var(--border)',
+    color: 'var(--text3)',
+    background: 'none',
+    transition: 'all 0.12s',
+    fontFamily: 'var(--font-mono)',
+    cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+  },
+  chipOn: {
+    background: 'var(--gold)',
+    borderColor: 'var(--gold)',
+    color: '#000',
+    fontWeight: 600,
+  },
 
-  // Input
-  inputArea: { padding: '12px 16px 14px', background: 'var(--bg2)', borderTop: '1px solid var(--border)' },
-  inputBox: { display: 'flex', gap: 0, background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 12, overflow: 'hidden', alignItems: 'flex-end', maxWidth: 820, margin: '0 auto', transition: 'border-color .2s' },
-  textarea: { flex: 1, background: 'none', border: 'none', color: 'var(--text)', padding: '12px 16px', fontSize: 15, resize: 'none', outline: 'none', fontFamily: 'var(--font)', lineHeight: 1.6, maxHeight: 200, minHeight: 48 },
-  inputActions: { padding: '8px 10px', display: 'flex', alignItems: 'flex-end', flexWrap: 'nowrap', gap: 0 },
-  sendBtn: { width: 36, height: 36, borderRadius: 8, background: 'var(--gold)', border: 'none', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'opacity .15s', flexShrink: 0 },
-  stopBtn: { display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, background: 'var(--bg4)', border: '1px solid var(--border2)', color: 'var(--text2)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)' },
-  inputFooter: { textAlign: 'center', fontSize: 11, color: 'var(--text3)', marginTop: 7, fontFamily: 'var(--font-mono)', maxWidth: 820, margin: '7px auto 0' },
+  // ── Settings panel ──
+  settingsPanel: {
+    padding: '12px 16px',
+    borderBottom: '1px solid var(--border)',
+    background: 'var(--bg2)',
+    flexShrink: 0,
+  },
+  settingsPanelHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  sysPromptInput: {
+    width: '100%',
+    background: 'var(--bg3)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--r)',
+    color: 'var(--text)',
+    padding: '9px 12px',
+    fontSize: 13,
+    resize: 'none',
+    lineHeight: 1.6,
+    fontFamily: 'var(--font)',
+  },
+  presetSelect: {
+    background: 'var(--bg3)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--r)',
+    color: 'var(--text2)',
+    padding: '4px 8px',
+    fontSize: 12,
+    fontFamily: 'var(--font)',
+    cursor: 'pointer',
+  },
+
+  // ── Messages ──
+  messages: {
+    flex: 1,
+    overflowY: 'auto',
+    overflowX: 'hidden',
+    padding: '24px 0 12px',
+    display: 'flex',
+    flexDirection: 'column',
+  },
+
+  welcome: {
+    margin: 'auto',
+    textAlign: 'center',
+    padding: '0 24px',
+    maxWidth: 580,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+  },
+  welcomeGlyph: {
+    fontSize: 52,
+    color: 'var(--gold)',
+    marginBottom: 20,
+    filter: 'drop-shadow(0 0 20px rgba(200,134,26,0.3))',
+    lineHeight: 1,
+  },
+  welcomeTitle: {
+    fontFamily: 'var(--font-display)',
+    fontWeight: 700,
+    fontSize: 40,
+    letterSpacing: '-0.02em',
+    color: 'var(--text)',
+    marginBottom: 10,
+  },
+  welcomeSub: {
+    color: 'var(--text3)',
+    fontSize: 13.5,
+    marginBottom: 32,
+    lineHeight: 1.7,
+  },
+  hintGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, 1fr)',
+    gap: 8,
+    width: '100%',
+    maxWidth: 540,
+  },
+  hintBtn: {
+    padding: '12px 10px',
+    background: 'var(--bg3)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--r-lg)',
+    color: 'var(--text2)',
+    fontSize: 12,
+    textAlign: 'center',
+    cursor: 'pointer',
+    lineHeight: 1.4,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    transition: 'all 0.15s',
+  },
+
+  msgRow: {
+    display: 'flex',
+    gap: 12,
+    padding: '14px 24px',
+    maxWidth: 'var(--msg-max-w)',
+    width: '100%',
+    alignSelf: 'center',
+    alignItems: 'flex-start',
+  },
+  msgRowUser: {
+    flexDirection: 'row-reverse',
+  },
+  avatar: {
+    width: 30,
+    height: 30,
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 13,
+    fontWeight: 700,
+    flexShrink: 0,
+    marginTop: 2,
+  },
+  avatarUser: {
+    background: 'var(--gold-dim)',
+    color: 'var(--gold)',
+    border: '1px solid rgba(200,134,26,0.25)',
+    fontFamily: 'var(--font-display)',
+    fontSize: 13,
+  },
+  avatarAI: {
+    background: 'var(--bg4)',
+    color: 'var(--teal2)',
+    border: '1px solid var(--border2)',
+    fontSize: 16,
+  },
+  msgContent: {
+    flex: 1,
+    minWidth: 0,
+  },
+  msgRole: {
+    fontSize: 10,
+    fontWeight: 700,
+    color: 'var(--text3)',
+    marginBottom: 6,
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase',
+    fontFamily: 'var(--font-mono)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+  },
+  msgProvider: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+    fontSize: 9,
+    color: 'var(--text3)',
+    background: 'var(--bg4)',
+    padding: '1px 6px',
+    borderRadius: 99,
+    border: '1px solid var(--border)',
+    textTransform: 'none',
+    letterSpacing: '0.03em',
+    fontWeight: 400,
+  },
+  msgActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 8,
+  },
+  msgActionBtn: {
+    padding: '3px 9px',
+    fontSize: 11,
+    background: 'var(--bg4)',
+    border: '1px solid var(--border2)',
+    borderRadius: 'var(--r-sm)',
+    color: 'var(--text3)',
+    cursor: 'pointer',
+    transition: 'all 0.12s',
+    fontFamily: 'var(--font)',
+  },
+
+  errorBanner: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    margin: '8px 24px',
+    padding: '10px 14px',
+    background: 'rgba(224,80,80,0.08)',
+    border: '1px solid rgba(224,80,80,0.25)',
+    borderRadius: 'var(--r)',
+    color: 'var(--error)',
+    fontSize: 13,
+    alignSelf: 'center',
+    maxWidth: 'var(--msg-max-w)',
+    width: 'calc(100% - 48px)',
+  },
+
+  videoBox: {
+    margin: '8px 24px',
+    padding: '14px 16px',
+    background: 'var(--bg3)',
+    border: '1px solid var(--border2)',
+    borderRadius: 'var(--r-xl)',
+    maxWidth: 600,
+    alignSelf: 'center',
+    width: 'calc(100% - 48px)',
+  },
+  videoBoxHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    fontSize: 12,
+    fontWeight: 600,
+    color: 'var(--text2)',
+    fontFamily: 'var(--font-mono)',
+  },
+
+  agentSection: {
+    margin: '8px 24px',
+    maxWidth: 'var(--msg-max-w)',
+    alignSelf: 'center',
+    width: 'calc(100% - 48px)',
+  },
+  agentSectionHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    fontSize: 11,
+    fontWeight: 700,
+    color: 'var(--text3)',
+    fontFamily: 'var(--font-mono)',
+    letterSpacing: '0.05em',
+    marginBottom: 10,
+    padding: '0 2px',
+  },
+  agentGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+    gap: 10,
+  },
+  agentCard: {
+    background: 'var(--bg3)',
+    border: '1px solid var(--border2)',
+    borderRadius: 'var(--r-lg)',
+    overflow: 'hidden',
+  },
+  agentCardHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    padding: '8px 12px',
+    borderBottom: '1px solid var(--border)',
+    background: 'var(--bg4)',
+  },
+  agentCardBody: {
+    padding: '10px 12px',
+    fontSize: 13,
+    lineHeight: 1.65,
+    color: 'var(--text)',
+    maxHeight: 260,
+    wordBreak: 'break-word',
+  },
+
+  // ── Input area ──
+  inputArea: {
+    padding: '12px 16px 16px',
+    background: 'var(--bg2)',
+    borderTop: '1px solid var(--border)',
+    flexShrink: 0,
+  },
+  agentControls: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    paddingBottom: 10,
+    maxWidth: 'var(--msg-max-w)',
+    margin: '0 auto 0',
+    flexWrap: 'wrap',
+    width: '100%',
+  },
+  inputBox: {
+    display: 'flex',
+    background: 'var(--bg3)',
+    border: '1px solid var(--border2)',
+    borderRadius: 'var(--r-xl)',
+    overflow: 'hidden',
+    alignItems: 'flex-end',
+    maxWidth: 'var(--msg-max-w)',
+    margin: '0 auto',
+    transition: 'border-color 0.2s, box-shadow 0.2s',
+  },
+  textarea: {
+    flex: 1,
+    background: 'none',
+    border: 'none',
+    color: 'var(--text)',
+    padding: '13px 16px',
+    fontSize: 15,
+    resize: 'none',
+    lineHeight: 1.65,
+    maxHeight: 220,
+    minHeight: 50,
+    fontFamily: 'var(--font)',
+  },
+  inputActions: {
+    padding: '9px 10px',
+    display: 'flex',
+    alignItems: 'flex-end',
+    gap: 5,
+    flexShrink: 0,
+  },
+  actionBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 'var(--r)',
+    background: 'var(--bg4)',
+    border: '1px solid var(--border2)',
+    color: 'var(--text3)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 13,
+    cursor: 'pointer',
+    transition: 'all 0.14s',
+    flexShrink: 0,
+  },
+  sendBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    background: 'var(--gold)',
+    border: 'none',
+    color: '#000',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    transition: 'opacity 0.15s',
+    flexShrink: 0,
+    fontWeight: 700,
+  },
+  stopBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    padding: '6px 12px',
+    borderRadius: 'var(--r)',
+    background: 'var(--bg4)',
+    border: '1px solid var(--border2)',
+    color: 'var(--text2)',
+    fontSize: 12,
+    cursor: 'pointer',
+    fontFamily: 'var(--font)',
+    height: 36,
+  },
+  fileChip: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 5,
+    padding: '4px 9px',
+    background: 'var(--bg4)',
+    border: '1px solid var(--border2)',
+    borderRadius: 99,
+    fontSize: 12,
+    color: 'var(--text2)',
+  },
+  inputHint: {
+    textAlign: 'center',
+    fontSize: 10.5,
+    color: 'var(--text4)',
+    marginTop: 7,
+    fontFamily: 'var(--font-mono)',
+    maxWidth: 'var(--msg-max-w)',
+    margin: '7px auto 0',
+    letterSpacing: '0.02em',
+  },
 }
