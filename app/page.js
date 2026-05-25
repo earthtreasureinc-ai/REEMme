@@ -4,6 +4,10 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import { lazy, Suspense } from 'react'
+import ChatSearch from './components/ChatSearch'
+import StatusBar from './components/StatusBar'
+const MermaidDiagram = lazy(() => import('./components/MermaidDiagram'))
 import VoiceInput from './components/VoiceInput'
 import localforage from 'localforage'
 import Fuse from 'fuse.js'
@@ -97,6 +101,21 @@ export default function REEMme() {
   const [firefliesData, setFirefliesData] = useState(null)
   const [heygenLoading, setHeygenLoading] = useState(false)
   const [heygenVideo, setHeygenVideo] = useState(null)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [editingMsgIdx, setEditingMsgIdx] = useState(null)
+  const [editContent, setEditContent] = useState('')
+  const [securityQuery, setSecurityQuery] = useState('')
+  const [securityType, setSecurityType] = useState('shodan')
+  const [securityResult, setSecurityResult] = useState(null)
+  const [securityLoading, setSecurityLoading] = useState(false)
+  const [makeScenarios, setMakeScenarios] = useState([])
+  const [makeScenariosLoading, setMakeScenariosLoading] = useState(false)
+  const [notionResults, setNotionResults] = useState([])
+  const [notionQuery, setNotionQuery] = useState('')
+  const [notionLoading, setNotionLoading] = useState(false)
+  const [octokitSearch, setOctokitSearch] = useState('')
+  const [octokitResults, setOctokitResults] = useState([])
+  const [octokitLoading, setOctokitLoading] = useState(false)
 
   const bottomRef = useRef(null)
   const textareaRef = useRef(null)
@@ -125,6 +144,7 @@ export default function REEMme() {
     const handler = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); setModelDropdownOpen(o => !o) }
       if ((e.metaKey || e.ctrlKey) && e.key === 'n') { e.preventDefault(); newChat() }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'f') { e.preventDefault(); setSearchOpen(o => !o) }
     }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
@@ -496,6 +516,62 @@ export default function REEMme() {
     if (preset) { setSystemPrompt(preset.value); setSelectedPreset(label) }
   }
 
+  const runSecurityScan = async () => {
+    if (!securityQuery.trim()) return
+    setSecurityLoading(true); setSecurityResult(null)
+    try {
+      const res = await fetch(`/api/security?q=${encodeURIComponent(securityQuery)}&type=${securityType}`)
+      setSecurityResult(await res.json())
+    } catch (e) { toast.error(e.message) }
+    setSecurityLoading(false)
+  }
+
+  const fetchMakeScenarios = async () => {
+    if (makeScenarios.length) return
+    setMakeScenariosLoading(true)
+    try {
+      const res = await fetch('/api/make?action=scenarios')
+      const data = await res.json()
+      setMakeScenarios(data.scenarios || [])
+    } catch {}
+    setMakeScenariosLoading(false)
+  }
+
+  const runMakeScenario = async (id) => {
+    try {
+      await fetch('/api/make', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scenarioId: id }) })
+      toast.success(`Scenario ${id} triggered`)
+    } catch (e) { toast.error(e.message) }
+  }
+
+  const searchNotion = async () => {
+    if (!notionQuery.trim()) return
+    setNotionLoading(true); setNotionResults([])
+    try {
+      const res = await fetch(`/api/notion?action=search&q=${encodeURIComponent(notionQuery)}`)
+      const data = await res.json()
+      setNotionResults(data.results || [])
+    } catch {}
+    setNotionLoading(false)
+  }
+
+  const searchOctokit = async () => {
+    if (!octokitSearch.trim()) return
+    setOctokitLoading(true); setOctokitResults([])
+    try {
+      const res = await fetch(`/api/octokit?q=${encodeURIComponent(octokitSearch)}&type=repos`)
+      const data = await res.json()
+      setOctokitResults(data.items || [])
+    } catch {}
+    setOctokitLoading(false)
+  }
+
+  const saveEditedMessage = () => {
+    if (editingMsgIdx === null) return
+    updateMessages(activeChatId, prev => prev.map((m, i) => i === editingMsgIdx ? { ...m, content: editContent } : m))
+    setEditingMsgIdx(null); setEditContent('')
+  }
+
   const filteredModels = (() => {
     const providerFiltered = providerFilter === 'all' ? models : models.filter(m => m.provider === providerFilter)
     if (!modelSearch.trim()) return providerFiltered
@@ -568,6 +644,33 @@ export default function REEMme() {
                 value={repoSearch}
                 onChange={e => setRepoSearch(e.target.value)}
               />
+              <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
+                <input
+                  style={{ ...S.modelSearchInput, flex: 1, fontSize: 12 }}
+                  placeholder="GitHub global search…"
+                  value={octokitSearch}
+                  onChange={e => setOctokitSearch(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && searchOctokit()}
+                />
+                <button onClick={searchOctokit} disabled={octokitLoading} style={{ padding: '5px 8px', background: 'var(--bg4)', border: '1px solid var(--border)', borderRadius: 5, color: 'var(--text2)', cursor: 'pointer', fontSize: 11 }}>
+                  {octokitLoading ? '⏳' : '🔭'}
+                </button>
+              </div>
+              {octokitResults.length > 0 && (
+                <div style={{ marginBottom: 8 }}>
+                  {octokitResults.slice(0, 5).map((r, i) => (
+                    <a key={i} href={r.url} target="_blank" rel="noreferrer" style={S.repoItem}>
+                      <div style={S.repoName}>{r.name?.split('/').pop()}</div>
+                      <div style={S.repoMeta}>
+                        <span style={S.repoAccount}>{r.name?.split('/')[0]}</span>
+                        {r.stars > 0 && <span style={S.repoLang}>★ {r.stars}</span>}
+                        {r.language && <span style={S.repoLang}>{r.language}</span>}
+                      </div>
+                      {r.description && <div style={S.repoDesc}>{r.description?.slice(0,60)}</div>}
+                    </a>
+                  ))}
+                </div>
+              )}
               {reposLoading && <div style={S.sidebarEmpty}><div className="spinner" /></div>}
               {!reposLoading && repos.length === 0 && (
                 <div style={S.sidebarEmpty}>
@@ -788,13 +891,25 @@ export default function REEMme() {
               <div style={S.toolSection}>
                 <div style={S.toolSectionHeader}>
                   <span>⚙️ Make.com</span>
-                  <span style={{ ...S.toolBadge, background: '#ec4899' }}>Saeed G.</span>
+                  <button style={{ ...S.toolBadge, background: '#ec4899', cursor: 'pointer', border: 'none' }} onClick={fetchMakeScenarios}>
+                    {makeScenariosLoading ? '⏳' : makeScenarios.length ? `${makeScenarios.length} scenarios` : 'load'}
+                  </button>
                 </div>
-                <div style={S.toolCard}>
-                  <div style={S.toolRow}><span style={S.toolLabel}>Org</span><span style={S.toolValue}>My Organization</span></div>
-                  <div style={S.toolRow}><span style={S.toolLabel}>Team</span><span style={S.toolValue}>My Team</span></div>
-                  <div style={S.toolRow}><span style={S.toolLabel}>Scenarios</span><span style={S.toolValue}>Add MAKE_API_KEY to activate</span></div>
-                </div>
+                {makeScenarios.length > 0 && (
+                  <div style={S.toolCard}>
+                    {makeScenarios.slice(0, 5).map((s, i) => (
+                      <div key={i} style={{ ...S.toolRow, cursor: 'pointer' }} onClick={() => runMakeScenario(s.id)}>
+                        <span style={{ ...S.toolLabel, maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
+                        <span style={{ ...S.toolValue, color: s.isActive ? 'var(--green)' : 'var(--text3)' }}>▶ run</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {!makeScenarios.length && !makeScenariosLoading && (
+                  <div style={S.toolCard}>
+                    <div style={S.toolRow}><span style={S.toolLabel}>Add MAKE_API_KEY</span><span style={S.toolValue}>to activate</span></div>
+                  </div>
+                )}
               </div>
 
               {/* HeyGen */}
@@ -809,17 +924,72 @@ export default function REEMme() {
                 </div>
               </div>
 
+              {/* Notion */}
+              <div style={S.toolSection}>
+                <div style={S.toolSectionHeader}>
+                  <span>📝 Notion</span>
+                  <span style={{ ...S.toolBadge, background: '#333' }}>search</span>
+                </div>
+                <div style={{ padding: '4px 4px 6px', display: 'flex', gap: 4 }}>
+                  <input
+                    style={{ ...S.modelSearchInput, flex: 1, fontSize: 12 }}
+                    placeholder="Search Notion pages…"
+                    value={notionQuery}
+                    onChange={e => setNotionQuery(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && searchNotion()}
+                  />
+                  <button onClick={searchNotion} disabled={notionLoading} style={{ padding: '5px 8px', background: '#333', border: '1px solid var(--border)', borderRadius: 5, color: 'var(--text2)', cursor: 'pointer', fontSize: 11 }}>
+                    {notionLoading ? '⏳' : '🔍'}
+                  </button>
+                </div>
+                {notionResults.length > 0 && (
+                  <div style={S.toolCard}>
+                    {notionResults.slice(0, 4).map((p, i) => (
+                      <div key={i} style={{ ...S.toolRow, cursor: 'pointer' }} onClick={() => { setInput(prev => prev + `\n\nNotion page: "${p.title}" (${p.url})`); setSidebarTab('chats') }}>
+                        <span style={{ ...S.toolLabel, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title}</span>
+                        <span style={S.toolValue}>{p.type}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* Security */}
               <div style={S.toolSection}>
                 <div style={S.toolSectionHeader}>
                   <span>🔒 Security</span>
                   <span style={{ ...S.toolBadge, background: '#ef4444' }}>3 tools</span>
                 </div>
-                <div style={S.toolCard}>
-                  <div style={S.toolRow}><span style={S.toolLabel}>Shodan</span><span style={{ ...S.toolValue, color: 'var(--green)' }}>connected</span></div>
-                  <div style={S.toolRow}><span style={S.toolLabel}>VirusTotal</span><span style={{ ...S.toolValue, color: 'var(--green)' }}>connected</span></div>
-                  <div style={S.toolRow}><span style={S.toolLabel}>AI or Not</span><span style={{ ...S.toolValue, color: 'var(--green)' }}>connected</span></div>
+                <div style={{ padding: '6px 4px 4px' }}>
+                  <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
+                    {['shodan','virustotal','aiornot'].map(t => (
+                      <button key={t} style={{ ...S.providerChip, ...(securityType === t ? S.providerChipOn : {}), flex: 1, justifyContent: 'center', fontSize: 9 }}
+                        onClick={() => setSecurityType(t)}>{t}</button>
+                    ))}
+                  </div>
+                  <input
+                    style={{ ...S.modelSearchInput, width: '100%', marginBottom: 4, fontSize: 12 }}
+                    placeholder={securityType === 'shodan' ? 'IP or search query…' : securityType === 'virustotal' ? 'URL or hash…' : 'Text to analyze…'}
+                    value={securityQuery}
+                    onChange={e => setSecurityQuery(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && runSecurityScan()}
+                  />
+                  <button
+                    onClick={runSecurityScan}
+                    disabled={securityLoading || !securityQuery.trim()}
+                    style={{ width: '100%', padding: '5px', background: '#ef4444', border: 'none', borderRadius: 5, color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer', opacity: securityQuery.trim() ? 1 : 0.5 }}
+                  >
+                    {securityLoading ? '⏳ Scanning…' : '🔍 Scan'}
+                  </button>
                 </div>
+                {securityResult && !securityResult.error && (
+                  <div style={{ ...S.toolCard, maxHeight: 120, overflowY: 'auto', marginTop: 4 }}>
+                    <pre style={{ fontSize: 10, padding: '6px 8px', color: 'var(--text2)', whiteSpace: 'pre-wrap', wordBreak: 'break-all', margin: 0 }}>
+                      {JSON.stringify(securityResult, null, 2).slice(0, 800)}
+                    </pre>
+                  </div>
+                )}
+                {securityResult?.error && <p style={{ fontSize: 11, color: 'var(--red)', padding: '4px 4px 0' }}>{securityResult.error}</p>}
               </div>
 
               {/* AI Providers */}
@@ -984,8 +1154,18 @@ export default function REEMme() {
                 <span style={{ fontSize: 11 }}>Export</span>
               </button>
             )}
+            <button
+              style={S.topBarBtn}
+              onClick={() => setSearchOpen(o => !o)}
+              title="Search chats (⌘F)"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <span style={{ fontSize: 11 }}>Search</span>
+            </button>
           </div>
         </div>
+
+        <StatusBar models={models} isStreaming={isStreaming} selectedModel={selectedModel} providerColors={PROVIDER_COLORS} />
 
         {/* Settings panel */}
         {showSettings && (
@@ -1083,6 +1263,13 @@ export default function REEMme() {
                         components={{
                           code({ node, inline, className, children, ...props }) {
                             const match = /language-(\w+)/.exec(className || '')
+                            if (!inline && match?.[1] === 'mermaid') {
+                              return (
+                                <Suspense fallback={<div style={{ padding: 8, color: 'var(--text3)', fontSize: 12 }}>Loading diagram…</div>}>
+                                  <MermaidDiagram chart={String(children).replace(/\n$/, '')} />
+                                </Suspense>
+                              )
+                            }
                             return !inline && match ? (
                               <SyntaxHighlighter style={oneDark} language={match[1]} PreTag="div" {...props}>
                                 {String(children).replace(/\n$/, '')}
@@ -1132,7 +1319,32 @@ export default function REEMme() {
                       )}
                     </div>
                   ) : (
-                    <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.content}</div>
+                    <div>
+                      {editingMsgIdx === i ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <textarea
+                            style={{ ...S.textarea, border: '1px solid var(--gold)', borderRadius: 8, padding: '8px 12px', minHeight: 60 }}
+                            value={editContent}
+                            onChange={e => setEditContent(e.target.value)}
+                            autoFocus
+                          />
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button onClick={saveEditedMessage} style={{ ...S.sendBtn, width: 'auto', padding: '4px 12px', fontSize: 12 }}>Save</button>
+                            <button onClick={() => setEditingMsgIdx(null)} style={{ ...S.stopBtn, fontSize: 12 }}>Cancel</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.content}</div>
+                      )}
+                      {editingMsgIdx !== i && (
+                        <button
+                          onClick={() => { setEditingMsgIdx(i); setEditContent(msg.content) }}
+                          style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4, background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}
+                        >
+                          ✏️ Edit
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -1315,6 +1527,13 @@ export default function REEMme() {
           </div>
         </div>
       </main>
+      {searchOpen && (
+        <ChatSearch
+          chats={chats}
+          onSelect={(chatId) => setActiveChatId(chatId)}
+          onClose={() => setSearchOpen(false)}
+        />
+      )}
     </div>
   )
 }
