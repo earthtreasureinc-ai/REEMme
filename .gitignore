@@ -4,3 +4,8 @@
 node_modules/
 .DS_Store
 *.log
+pipeline.log
+diagnosis_log.txt
+integration_check.txt
+next-env.d.ts
+tsconfig.tsbuildinfo
