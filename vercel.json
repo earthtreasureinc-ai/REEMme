@@ -20,6 +20,13 @@
     "app/api/agents/route.js":        { "maxDuration": 60 },
     "app/api/fireflies/route.js":     { "maxDuration": 20 },
     "app/api/deploy/route.js":        { "maxDuration": 30 },
-    "app/api/make/route.js":          { "maxDuration": 30 }
+    "app/api/make/route.js":          { "maxDuration": 30 },
+    "app/api/replicate/route.js":  { "maxDuration": 60 },
+    "app/api/elevenlabs/route.js": { "maxDuration": 30 },
+    "app/api/octokit/route.js":    { "maxDuration": 20 },
+    "app/api/inference/route.js":  { "maxDuration": 30 },
+    "app/api/notion/route.js":     { "maxDuration": 20 },
+    "app/api/sentinel/route.js":   { "maxDuration": 30 },
+    "app/api/analytics/route.js":  { "maxDuration": 30 }
   }
 }

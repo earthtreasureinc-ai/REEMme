@@ -48,6 +48,34 @@ export async function POST(req) {
       }
     }
 
+    // DOCX
+    if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || ext === '.docx') {
+      const buffer = Buffer.from(await file.arrayBuffer())
+      try {
+        const mammoth = (await import('mammoth')).default
+        const result = await mammoth.extractRawText({ buffer })
+        return Response.json({ content: result.value, name, ext: '.docx', size, pages: null })
+      } catch {
+        return Response.json({ error: 'DOCX parsing failed' }, { status: 422 })
+      }
+    }
+
+    // XLSX / XLS / CSV
+    if (['.xlsx', '.xls', '.csv'].includes(ext) || mimeType.includes('spreadsheet') || mimeType.includes('excel')) {
+      const buffer = Buffer.from(await file.arrayBuffer())
+      try {
+        const XLSX = (await import('xlsx')).default
+        const workbook = XLSX.read(buffer, { type: 'buffer' })
+        const sheets = workbook.SheetNames.map(name => {
+          const ws = workbook.Sheets[name]
+          return `## Sheet: ${name}\n${XLSX.utils.sheet_to_csv(ws)}`
+        })
+        return Response.json({ content: sheets.join('\n\n'), name, ext, size })
+      } catch {
+        return Response.json({ error: 'Spreadsheet parsing failed' }, { status: 422 })
+      }
+    }
+
     // JSON
     if (mimeType === 'application/json' || ext === '.json') {
       const raw = await file.text()

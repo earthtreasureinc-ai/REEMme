@@ -112,6 +112,28 @@ export async function POST(request) {
     }
   }
 
+  // Replicate SDXL
+  const replicateToken = process.env.REPLICATE_API_TOKEN
+  if (replicateToken) {
+    try {
+      const createRes = await fetch('https://api.replicate.com/v1/predictions', {
+        method: 'POST',
+        headers: { Authorization: `Token ${replicateToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ version: 'da77bc59ee60423279fd632efb4795ab731d9e3ca9705ef3341091fb989b7eaf', input: { prompt: prompt.slice(0, 1000), width: 1024, height: 1024, num_outputs: 1 } }),
+        signal: AbortSignal.timeout(10000),
+      })
+      const pred = await createRes.json()
+      let result = pred
+      const start = Date.now()
+      while (['starting', 'processing'].includes(result.status) && Date.now() - start < 55000) {
+        await new Promise(r => setTimeout(r, 2500))
+        const poll = await fetch(`https://api.replicate.com/v1/predictions/${result.id}`, { headers: { Authorization: `Token ${replicateToken}` }, signal: AbortSignal.timeout(10000) })
+        result = await poll.json()
+      }
+      if (result.output?.[0]) return Response.json({ image: result.output[0], provider: 'replicate-sdxl' })
+    } catch {}
+  }
+
   // --- No provider available ---
   return NextResponse.json(
     { error: "No image generation keys configured", provider: "none" },
