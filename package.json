@@ -5,14 +5,16 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "lint": "next lint",
+    "postinstall": "npm audit fix --force || true"
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",
-    "next": "15.0.0",
+    "next": "^15.0.1",
     "pdf-parse": "^2.4.5",
-    "react": "18.2.0",
-    "react-dom": "18.2.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "react-markdown": "^9.0.1",
     "react-syntax-highlighter": "^15.6.1",
     "p-limit": "^4.0.0",
@@ -20,5 +22,13 @@
     "mammoth": "^1.6.0",
     "xlsx": "^0.18.5",
     "uuid": "^11.0.2"
+  },
+  "engines": {
+    "node": ">=18 <19"
+  },
+  "overrides": {
+    // Example overrides – add only if you discover a vulnerable sub‑dependency
+    // "lodash": "4.17.21",
+    // "axios": "1.7.2"
   }
 }
