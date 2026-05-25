@@ -82,8 +82,11 @@ export async function POST(req) {
 
   const startTime = Date.now()
 
+  const { default: pLimit } = await import('p-limit')
+  const limit = pLimit(6)
+
   const results = await Promise.allSettled(
-    providers.map(async (providerName) => {
+    providers.map(async (providerName) => limit(async () => {
       const def = PROVIDER_ENDPOINTS[providerName]
       if (!def) throw new Error(`Unknown provider: ${providerName}`)
       const t0 = Date.now()

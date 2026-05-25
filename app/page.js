@@ -1,6 +1,9 @@
 'use client'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import VoiceInput from './components/VoiceInput'
 
 const PRESET_PROMPTS = [
@@ -981,7 +984,7 @@ export default function REEMme() {
         <input
           type="file" ref={fileInputRef} style={{ display: 'none' }}
           onChange={handleFileUpload}
-          accept=".txt,.md,.js,.ts,.jsx,.tsx,.py,.java,.cpp,.c,.h,.cs,.go,.rs,.rb,.php,.swift,.kt,.json,.yaml,.yml,.toml,.xml,.html,.css,.scss,.sh,.bash,.sql,.graphql,.pdf,.png,.jpg,.jpeg,.gif,.webp"
+          accept=".txt,.md,.js,.ts,.jsx,.tsx,.py,.java,.cpp,.c,.h,.cs,.go,.rs,.rb,.php,.swift,.kt,.json,.yaml,.yml,.toml,.xml,.html,.css,.scss,.sh,.bash,.sql,.graphql,.pdf,.png,.jpg,.jpeg,.gif,.webp,.docx,.xlsx,.xls,.csv"
         />
 
         {/* Messages */}
@@ -1040,7 +1043,25 @@ export default function REEMme() {
                 <div style={S.messageBody}>
                   {msg.role === 'assistant' ? (
                     <div className={`prose${isStreaming && i === messages.length - 1 && msg.content ? ' cursor-blink' : ''}`}>
-                      <ReactMarkdown>{msg.content || ''}</ReactMarkdown>
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          code({ node, inline, className, children, ...props }) {
+                            const match = /language-(\w+)/.exec(className || '')
+                            return !inline && match ? (
+                              <SyntaxHighlighter style={oneDark} language={match[1]} PreTag="div" {...props}>
+                                {String(children).replace(/\n$/, '')}
+                              </SyntaxHighlighter>
+                            ) : (
+                              <code style={{ background: 'var(--bg4)', padding: '2px 5px', borderRadius: 3, fontSize: '0.9em', fontFamily: 'var(--font-mono)' }} {...props}>{children}</code>
+                            )
+                          },
+                          table({ children }) { return <table style={{ borderCollapse: 'collapse', width: '100%', marginBottom: 12 }}>{children}</table> },
+                          th({ children }) { return <th style={{ border: '1px solid var(--border2)', padding: '6px 10px', background: 'var(--bg4)', textAlign: 'left', fontSize: 13 }}>{children}</th> },
+                          td({ children }) { return <td style={{ border: '1px solid var(--border)', padding: '6px 10px', fontSize: 13 }}>{children}</td> },
+                          a({ href, children }) { return <a href={href} target="_blank" rel="noreferrer" style={{ color: 'var(--gold)', textDecoration: 'underline' }}>{children}</a> },
+                        }}
+                      >{msg.content || ''}</ReactMarkdown>
                       {isStreaming && i === messages.length - 1 && !msg.content && (
                         <div style={{ display: 'flex', gap: 4, alignItems: 'center', height: 24 }}>
                           {[0, 1, 2].map(j => (
@@ -1125,7 +1146,7 @@ export default function REEMme() {
                     </div>
                     <div style={S.multiAgentCardBody}>
                       {r.error ? <span style={{ color: 'var(--red)', fontSize: 12 }}>{r.error}</span> : (
-                        <div className="prose"><ReactMarkdown>{r.content || ''}</ReactMarkdown></div>
+                        <div className="prose"><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ code({ node, inline, className, children, ...props }) { const match = /language-(\w+)/.exec(className || ''); return !inline && match ? <SyntaxHighlighter style={oneDark} language={match[1]} PreTag="div" {...props}>{String(children).replace(/\n$/, '')}</SyntaxHighlighter> : <code style={{ background: 'var(--bg4)', padding: '2px 5px', borderRadius: 3, fontSize: '0.9em' }} {...props}>{children}</code> } }}>{r.content || ''}</ReactMarkdown></div>
                       )}
                     </div>
                   </div>
