@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    serverActions: true,
+  target: 'serverless',
+  images: {
+    domains: ['example.com'], // Add your image domains here
   },
 }
 
