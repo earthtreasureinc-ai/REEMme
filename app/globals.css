@@ -118,3 +118,134 @@ code { font-family: var(--font-mono); }
 /* ── Delete button hover on chat items ──────────────────────── */
 .chat-item:hover .delete-btn,
 div:hover > .delete-btn { opacity: 1 !important; }
+
+/* ── Mobile responsive ──────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Sidebar becomes a drawer */
+  aside {
+    position: fixed !important;
+    left: 0; top: 0; bottom: 0;
+    z-index: 500;
+    box-shadow: 4px 0 24px rgba(0,0,0,0.5);
+    width: 280px !important;
+  }
+  /* Smaller message padding */
+  div[style*="padding: '12px 24px'"] { padding: 10px 14px !important; }
+  /* Full-width messages */
+  div[style*="maxWidth: 820"] { max-width: 100% !important; padding: 0 !important; }
+  /* Input area */
+  div[style*="padding: '12px 16px 14px'"] { padding: 10px 10px 12px !important; }
+  /* Hide status bar on small screens */
+  .status-bar { display: none !important; }
+}
+
+@media (max-width: 480px) {
+  /* Stack input actions vertically on very small screens */
+  div[style*="inputActions"] { flex-wrap: wrap !important; }
+}
+
+/* ── Light mode ─────────────────────────────────────────────── */
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg:      #f8f7f4;
+    --bg2:     #f0ede8;
+    --bg3:     #e8e4dc;
+    --bg4:     #ddd8ce;
+    --text:    #1a1915;
+    --text2:   #2d2b24;
+    --text3:   #7a7060;
+    --border:  rgba(0,0,0,0.1);
+    --border2: rgba(0,0,0,0.18);
+    --gold:    #b8860b;
+    --gold-dim: rgba(184,134,11,0.12);
+    --green:   #16a34a;
+    --red:     #dc2626;
+  }
+  .prose pre > div { filter: invert(0.03); }
+}
+
+/* ── Enhanced animations ────────────────────────────────────── */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.fade-in  { animation: slideUp  0.18s ease forwards; }
+.slide-in { animation: slideIn  0.15s ease forwards; }
+.scale-in { animation: scaleIn  0.15s ease forwards; }
+
+/* ── Hover states ───────────────────────────────────────────── */
+.hint-btn:hover  { background: var(--bg4) !important; border-color: var(--border2) !important; color: var(--text) !important; }
+.chat-item:hover { background: var(--bg4) !important; }
+.repo-item:hover { background: var(--bg4) !important; }
+.model-option:hover { background: var(--bg4) !important; }
+
+/* ── Focus visible ring ─────────────────────────────────────── */
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* ── cmdk styles ────────────────────────────────────────────── */
+[cmdk-root] { font-family: var(--font); }
+[cmdk-input] { caret-color: var(--gold); }
+[cmdk-item] { cursor: pointer; }
+[cmdk-item][aria-selected="true"] { background: var(--bg4) !important; color: var(--text) !important; }
+[cmdk-item][aria-selected="true"] svg { color: var(--gold); }
+[cmdk-group-heading] {
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  color: var(--text3) !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  padding: 8px 10px 4px !important;
+  font-family: var(--font-mono) !important;
+}
+[cmdk-separator] { height: 1px; background: var(--border); margin: 4px 0; }
+
+/* ── Recharts theme overrides ───────────────────────────────── */
+.recharts-text { fill: var(--text3) !important; font-family: var(--font-mono) !important; }
+.recharts-cartesian-axis-line { stroke: var(--border) !important; }
+.recharts-cartesian-grid-horizontal line { stroke: var(--border) !important; opacity: 0.5; }
+.recharts-tooltip-wrapper { font-family: var(--font) !important; }
+
+/* ── Mermaid diagram overrides ──────────────────────────────── */
+.mermaid svg { max-width: 100%; height: auto; }
+
+/* ── Sonner toast overrides ─────────────────────────────────── */
+[data-sonner-toaster] { font-family: var(--font) !important; }
+[data-sonner-toast] { background: var(--bg3) !important; border: 1px solid var(--border2) !important; color: var(--text) !important; border-radius: 10px !important; }
+[data-sonner-toast][data-type="error"] { background: #1f0a0a !important; border-color: #5a1a1a !important; }
+[data-sonner-toast][data-type="success"] { background: #0a1f0a !important; border-color: #1a5a1a !important; }
+
+/* ── Loading skeleton ───────────────────────────────────────── */
+.skeleton-text { height: 12px; border-radius: 4px; margin: 4px 0; }
+.skeleton-text:nth-child(2) { width: 80%; }
+.skeleton-text:nth-child(3) { width: 60%; }
+
+/* ── Code block copy button ─────────────────────────────────── */
+.code-block-wrapper { position: relative; }
+.code-copy-btn {
+  position: absolute; top: 8px; right: 8px;
+  background: var(--bg4); border: 1px solid var(--border);
+  border-radius: 5px; padding: 3px 7px; font-size: 11px;
+  color: var(--text3); cursor: pointer; opacity: 0; transition: opacity .15s;
+}
+.code-block-wrapper:hover .code-copy-btn { opacity: 1; }
+
+/* ── Selection color ────────────────────────────────────────── */
+::selection { background: var(--gold-dim); color: var(--text); }
+
+/* ── Print styles ───────────────────────────────────────────── */
+@media print {
+  aside, .input-area, .top-bar { display: none !important; }
+  .messages { padding: 0 !important; }
+}
